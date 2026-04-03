@@ -330,6 +330,46 @@ def get_search_history(limit: int = 20) -> List[SearchHistory]:
         raise
 
 
+def get_today_statistics() -> Dict:
+    """Get search statistics for today
+
+    Returns:
+        Dict: Statistics including searches, new_companies, dedup_rate
+    """
+    from datetime import date
+    from sqlalchemy import func
+
+    try:
+        db = get_db()
+        today = date.today()
+
+        # Query all searches from today
+        today_searches = db.query(SearchHistory).filter(
+            func.date(SearchHistory.created_at) == today
+        ).all()
+
+        total_searches = len(today_searches)
+        total_new = sum(s.new_count for s in today_searches)
+        total_duplicates = sum(s.duplicate_count for s in today_searches)
+
+        # Calculate dedup rate
+        total = total_new + total_duplicates
+        dedup_rate = (total_duplicates / total * 100) if total > 0 else 0
+
+        return {
+            "searches": total_searches,
+            "new_companies": total_new,
+            "dedup_rate": round(dedup_rate, 1)
+        }
+    except Exception as e:
+        logger.error(f"Error getting today's statistics: {e}")
+        return {
+            "searches": 0,
+            "new_companies": 0,
+            "dedup_rate": 0
+        }
+
+
 # Phase 2+ Placeholder Functions
 
 

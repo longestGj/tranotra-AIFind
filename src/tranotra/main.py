@@ -2,11 +2,12 @@
 
 from pathlib import Path
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 
 from tranotra.config import create_app_config
 from tranotra.routes import search_bp
 from tranotra.infrastructure.database import init_db
+from tranotra.db import get_today_statistics
 
 
 def create_app() -> Flask:
@@ -37,15 +38,21 @@ def create_app() -> Flask:
     # Register blueprints
     app.register_blueprint(search_bp)
 
-    # Health check endpoint
+    # Home page endpoint (Search form)
     @app.route("/", methods=["GET"])
-    def health_check() -> tuple:
-        """Health check endpoint
+    def home() -> tuple:
+        """Home page with search form
 
         Returns:
-            tuple: JSON response and HTTP status code
+            tuple: HTML response and HTTP status code
         """
-        return jsonify({"status": "healthy", "version": "1.0"}), 200
+        try:
+            stats = get_today_statistics()
+        except Exception as e:
+            app.logger.error(f"Error fetching statistics: {e}")
+            stats = {"searches": 0, "new_companies": 0, "dedup_rate": 0}
+
+        return render_template("index.html", stats=stats), 200
 
     return app
 
