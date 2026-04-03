@@ -32,9 +32,9 @@ class TestInitializeGemini:
         """Test initialization with valid API key"""
         with patch("src.tranotra.gemini_client.genai") as mock_genai:
             mock_genai.GenerativeModel = MagicMock()
-            result = initialize_gemini("test_api_key_12345")
+            result = initialize_gemini("sk_test_api_key_12345678901234567890")
             assert result is True
-            mock_genai.configure.assert_called_once_with(api_key="test_api_key_12345")
+            mock_genai.configure.assert_called_once_with(api_key="sk_test_api_key_12345678901234567890")
 
     def test_initialize_with_empty_api_key(self):
         """Test initialization with empty API key raises ValueError"""
@@ -86,110 +86,106 @@ class TestRedactApiKey:
 class TestCallGeminiGroundingSearch:
     """Test suite for call_gemini_grounding_search() function"""
 
-    @pytest.fixture(autouse=True)
-    def setup_gemini_client(self):
-        """Setup Gemini client before each test"""
-        with patch("src.tranotra.gemini_client.genai") as mock_genai:
-            mock_genai.GenerativeModel = MagicMock()
-            initialize_gemini("test_api_key")
+    @pytest.fixture
+    def mock_gemini_client(self):
+        """Fixture to mock the global _gemini_client"""
+        import src.tranotra.gemini_client as gc
 
-    def test_search_returns_raw_response(self):
+        mock_client = MagicMock()
+        original_client = gc._gemini_client
+        gc._gemini_client = mock_client
+
+        yield mock_client
+
+        # Cleanup: restore original client
+        gc._gemini_client = original_client
+
+    def test_search_returns_raw_response(self, mock_gemini_client):
         """Test that search returns raw response unchanged"""
         sample_response = '{"companies": [{"name": "Company A", "country": "Vietnam"}]}'
 
-        with patch("src.tranotra.gemini_client.genai.GenerativeModel") as mock_model_class:
-            mock_response = MagicMock()
-            mock_response.text = sample_response
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model_class.return_value = mock_instance
+        mock_response = MagicMock()
+        mock_response.text = sample_response
+        mock_gemini_client.generate_content.return_value = mock_response
 
-            result = call_gemini_grounding_search(country="Vietnam", query="PVC manufacturer")
+        result = call_gemini_grounding_search(country="Vietnam", query="PVC manufacturer")
 
-            assert result == sample_response
-            assert result.startswith("{")  # Raw JSON preserved
+        assert result == sample_response
+        assert result.startswith("{")  # Raw JSON preserved
 
-    def test_search_does_not_parse_response(self):
+    def test_search_does_not_parse_response(self, mock_gemini_client):
         """Test that search does NOT parse or validate response"""
         # Return malformed JSON to verify no parsing happens
         malformed_json = '{"broken json": [1, 2'
 
-        with patch("src.tranotra.gemini_client.genai.GenerativeModel") as mock_model_class:
-            mock_response = MagicMock()
-            mock_response.text = malformed_json
-            mock_instance = MagicMock()
-            mock_instance.generate_content.return_value = mock_response
-            mock_model_class.return_value = mock_instance
+        mock_response = MagicMock()
+        mock_response.text = malformed_json
+        mock_gemini_client.generate_content.return_value = mock_response
 
-            result = call_gemini_grounding_search(country="Vietnam", query="test")
+        result = call_gemini_grounding_search(country="Vietnam", query="test")
 
-            # Should return raw response without parsing
-            assert result == malformed_json
+        # Should return raw response without parsing
+        assert result == malformed_json
 
-    def test_search_with_timeout(self):
+    def test_search_with_timeout(self, mock_gemini_client):
         """Test that search respects timeout and retries"""
-        with patch("src.tranotra.gemini_client.genai.GenerativeModel") as mock_model_class:
-            mock_instance = MagicMock()
-            # Simulate timeout on all attempts
-            mock_instance.generate_content.side_effect = TimeoutError("Request timed out")
-            mock_model_class.return_value = mock_instance
+        # Simulate timeout on all attempts
+        mock_gemini_client.generate_content.side_effect = TimeoutError("Request timed out")
 
-            with pytest.raises(GeminiTimeoutError, match="搜索超时"):
+        with pytest.raises(GeminiTimeoutError, match="搜索超时"):
+            call_gemini_grounding_search(
+                country="Vietnam",
+                query="test",
+                timeout=30,
+                max_retries=3,
+            )
+
+    def test_search_retry_success_on_third_attempt(self, mock_gemini_client):
+        """Test that search succeeds on 3rd retry attempt"""
+        # First 2 attempts fail with timeout, 3rd succeeds
+        mock_response = MagicMock()
+        mock_response.text = '{"companies": []}'
+        mock_gemini_client.generate_content.side_effect = [
+            TimeoutError("Timeout 1"),
+            TimeoutError("Timeout 2"),
+            mock_response,
+        ]
+
+        with patch("src.tranotra.gemini_client.time.sleep"):
+            result = call_gemini_grounding_search(
+                country="Vietnam",
+                query="test",
+                timeout=30,
+                max_retries=3,
+            )
+
+        assert result == '{"companies": []}'
+
+    def test_search_rate_limit_error(self, mock_gemini_client):
+        """Test that rate limit errors are handled correctly"""
+        mock_gemini_client.generate_content.side_effect = Exception("429 Quota exceeded")
+
+        with patch("src.tranotra.gemini_client.time.sleep"):
+            with pytest.raises(GeminiRateLimitError, match="配额"):
                 call_gemini_grounding_search(
                     country="Vietnam",
                     query="test",
-                    timeout=30,
-                    max_retries=3,
+                    max_retries=1,
                 )
-
-    def test_search_retry_success_on_third_attempt(self):
-        """Test that search succeeds on 3rd retry attempt"""
-        with patch("src.tranotra.gemini_client.genai.GenerativeModel") as mock_model_class:
-            # First 2 attempts fail with timeout, 3rd succeeds
-            mock_response = MagicMock()
-            mock_response.text = '{"companies": []}'
-            mock_instance = MagicMock()
-            mock_instance.generate_content.side_effect = [
-                TimeoutError("Timeout 1"),
-                TimeoutError("Timeout 2"),
-                mock_response,
-            ]
-            mock_model_class.return_value = mock_instance
-
-            with patch("src.tranotra.gemini_client.time.sleep"):
-                result = call_gemini_grounding_search(
-                    country="Vietnam",
-                    query="test",
-                    timeout=30,
-                    max_retries=3,
-                )
-
-            assert result == '{"companies": []}'
-
-    def test_search_rate_limit_error(self):
-        """Test that rate limit errors are handled correctly"""
-        with patch("src.tranotra.gemini_client.genai.GenerativeModel") as mock_model_class:
-            mock_instance = MagicMock()
-            mock_instance.generate_content.side_effect = Exception("429 Quota exceeded")
-            mock_model_class.return_value = mock_instance
-
-            with patch("src.tranotra.gemini_client.time.sleep"):
-                with pytest.raises(GeminiRateLimitError, match="配额"):
-                    call_gemini_grounding_search(
-                        country="Vietnam",
-                        query="test",
-                        max_retries=1,
-                    )
 
     def test_search_not_initialized_raises_error(self):
         """Test that calling search without initialization raises error"""
         # Reset the global client
         import src.tranotra.gemini_client as gc
 
+        original_client = gc._gemini_client
         gc._gemini_client = None
 
-        with pytest.raises(GeminiError, match="not initialized"):
-            call_gemini_grounding_search(country="Vietnam", query="test")
+        try:
+            with pytest.raises(GeminiError, match="not initialized"):
+                call_gemini_grounding_search(country="Vietnam", query="test")
+        finally:
+            gc._gemini_client = original_client
 
 
 class TestIntegration:
@@ -205,8 +201,8 @@ class TestIntegration:
             mock_instance.generate_content.return_value = mock_response
             mock_genai.GenerativeModel.return_value = mock_instance
 
-            # Initialize
-            result = initialize_gemini("test_api_key")
+            # Initialize with valid-length API key
+            result = initialize_gemini("sk_test_api_key_12345678901234567890")
             assert result is True
 
             # Call search

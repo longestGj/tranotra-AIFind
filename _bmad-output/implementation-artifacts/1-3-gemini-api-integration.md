@@ -352,8 +352,26 @@ class GeminiRateLimitError(GeminiError): pass
 - Logging: Never logs full API key; uses redaction (prefix + "...***")
 - Response handling: Returns raw response unchanged (no parsing/validation)
 
+### Review Findings
+
+#### Patch Items (6)
+
+- [ ] [Review][Patch] [CRITICAL] 全局状态管理缺陷 - 使用新实例而不是全局 _gemini_client [src/tranotra/gemini_client.py:138]
+- [ ] [Review][Patch] [CRITICAL] 超时保证未实现 - timeout 参数未被使用，AC2 失效 [src/tranotra/gemini_client.py:105-145]
+- [ ] [Review][Patch] [HIGH] 线程安全缺失 - 全局 _gemini_client 在多线程环境下不安全 [src/tranotra/gemini_client.py:28]
+- [ ] [Review][Patch] [MEDIUM] Asyncio 导入误用 - 导入但未使用，except 块死代码 [src/tranotra/gemini_client.py:133-145]
+- [ ] [Review][Patch] [MEDIUM] Retry 数组越界风险 - max_retries > 3 时 IndexError [src/tranotra/gemini_client.py:125]
+- [ ] [Review][Patch] [LOW] API 密钥最小长度验证缺失 - 允许单字符密钥 [src/tranotra/gemini_client.py:58]
+
+#### Deferred Items (2)
+
+- [x] [Review][Defer] [LOW] 日志中的敏感数据 — deferred to Story 1.4 (logging security strategy)
+- [x] [Review][Defer] [LOW] Story 1.4 格式验证交互 — deferred, design intent (raw response by design)
+
+---
+
 ### Completion Notes
-✅ **Story 1-3 Implementation Complete**
+✅ **Story 1-3 Implementation Complete (With Review Findings)**
 
 **Summary:**
 Gemini API integration successfully implemented with complete client wrapper, error handling, and comprehensive test suite.

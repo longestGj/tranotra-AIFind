@@ -8,6 +8,7 @@ Provides interface for Gemini Grounding Search API with:
 """
 
 import logging
+import threading
 import time
 from typing import Optional
 
@@ -22,8 +23,9 @@ from .core.exceptions import (
 
 logger = logging.getLogger(__name__)
 
-# Global Gemini client instance
+# Global Gemini client instance with thread safety
 _gemini_client: Optional[genai.GenerativeModel] = None
+_lock = threading.Lock()
 
 
 def _redact_api_key(api_key: str) -> str:
@@ -50,26 +52,27 @@ def initialize_gemini(api_key: str) -> bool:
         True if initialization successful, False otherwise
 
     Raises:
-        ValueError: If API key is empty or None
+        ValueError: If API key is empty, too short, or invalid
     """
     global _gemini_client
 
     # Validate API key
-    if not api_key or not isinstance(api_key, str) or not api_key.strip():
+    if not api_key or not isinstance(api_key, str) or len(api_key.strip()) < 20:
         error_msg = "未找到 GEMINI_API_KEY，请检查 .env 文件"
         logger.error(error_msg)
         logger.error("获取 API 密钥: https://aistudio.google.com/app/apikey")
         raise ValueError(error_msg)
 
     try:
-        # Configure Gemini API with provided key
-        genai.configure(api_key=api_key)
+        with _lock:
+            # Configure Gemini API with provided key
+            genai.configure(api_key=api_key)
 
-        # Create client instance
-        _gemini_client = genai.GenerativeModel("gemini-2.5-flash")
+            # Create client instance
+            _gemini_client = genai.GenerativeModel("gemini-2.5-flash")
 
-        # Log successful initialization (without revealing full API key)
-        logger.info(f"Gemini client initialized (key: {_redact_api_key(api_key)})")
+            # Log successful initialization (without revealing full API key)
+            logger.info(f"Gemini client initialized (key: {_redact_api_key(api_key)})")
         return True
 
     except Exception as e:
@@ -79,7 +82,10 @@ def initialize_gemini(api_key: str) -> bool:
 
 
 def call_gemini_grounding_search(
-    country: str, query: str, timeout: int = 30, max_retries: int = 3
+    country: str,
+    query: str,
+    timeout: int = 30,
+    max_retries: int = 3,
 ) -> str:
     """Call Gemini Grounding Search API to find companies
 
@@ -90,7 +96,8 @@ def call_gemini_grounding_search(
         max_retries: Maximum number of retry attempts (default: 3)
 
     Returns:
-        Raw response from Gemini API as string (JSON/CSV/Markdown format preserved)
+        Raw response from Gemini API as string (JSON/CSV/Markdown format
+        preserved)
 
     Raises:
         GeminiTimeoutError: If request times out after all retries
@@ -119,28 +126,28 @@ Please be thorough and return as many relevant companies as possible."""
 
     # Retry logic with exponential backoff
     retry_count = 0
-    backoff_times = [2, 4, 8]  # Exponential backoff: 2s, 4s, 8s
+    backoff_times = [2, 4, 8, 16]  # Exponential backoff: 2s, 4s, 8s, 16s
+
+    start_time = time.time()
 
     while retry_count < max_retries:
         try:
+            # Check timeout before attempting
+            elapsed = time.time() - start_time
+            if elapsed >= timeout:
+                raise TimeoutError(f"Overall timeout exceeded ({elapsed:.1f}s > {timeout}s)")
+
             logger.info(
                 f"Calling Gemini API (attempt {retry_count + 1}/{max_retries}): "
                 f'search for "{query}" in {country}'
             )
 
-            # Call Gemini with timeout
-            import asyncio
+            # Call Gemini with global client instance
+            response = _gemini_client.generate_content(prompt)
+            result_text = response.text
 
-            try:
-                # Use timeout context for the call
-                response = genai.GenerativeModel("gemini-2.5-flash").generate_content(prompt)
-                result_text = response.text
-
-                logger.info(f"Gemini API call successful: {len(result_text)} characters returned")
-                return result_text
-
-            except asyncio.TimeoutError:
-                raise TimeoutError("Gemini API request timed out")
+            logger.info(f"Gemini API call successful: {len(result_text)} characters returned")
+            return result_text
 
         except TimeoutError as e:
             retry_count += 1
@@ -150,7 +157,8 @@ Please be thorough and return as many relevant companies as possible."""
                 raise GeminiTimeoutError("搜索超时，请在 30 秒后重试") from e
 
             # Wait with exponential backoff before retry
-            wait_time = backoff_times[retry_count - 1]
+            wait_idx = min(retry_count - 1, len(backoff_times) - 1)  # Prevent index overflow
+            wait_time = backoff_times[wait_idx]
             logger.warning(f"Timeout on attempt {retry_count}, retrying in {wait_time}s...")
             time.sleep(wait_time)
 
@@ -163,7 +171,8 @@ Please be thorough and return as many relevant companies as possible."""
                     logger.error(error_msg)
                     raise GeminiRateLimitError("API 配额已用尽，请稍后再试") from e
 
-                wait_time = backoff_times[retry_count - 1]
+                wait_idx = min(retry_count - 1, len(backoff_times) - 1)  # Prevent index overflow
+                wait_time = backoff_times[wait_idx]
                 logger.warning(f"Rate limited, retrying in {wait_time}s...")
                 time.sleep(wait_time)
 
