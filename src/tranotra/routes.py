@@ -2,8 +2,11 @@
 
 import logging
 import time
+import json
+import threading
 from typing import Tuple, Dict, Optional
 from functools import lru_cache
+from collections import OrderedDict
 
 from flask import Blueprint, Response, jsonify, request, render_template, current_app
 
@@ -20,39 +23,57 @@ search_bp = Blueprint("search", __name__, url_prefix="/api/search")
 # Simple in-memory cache for search results (TTL: 5 minutes)
 class SearchResultsCache:
     def __init__(self, max_size: int = 50, ttl: int = 300):
-        self.cache: Dict = {}
-        self.timestamps: Dict = {}
+        self.cache: OrderedDict = OrderedDict()
         self.max_size = max_size
         self.ttl = ttl
+        self.lock = threading.RLock()
 
-    def get(self, key: str) -> Optional[Dict]:
+    def _generate_key(self, country: Optional[str], query: Optional[str], page: int) -> str:
+        """Generate cache key using JSON serialization to avoid collisions"""
+        key_dict = {
+            'country': country,
+            'query': query,
+            'page': page
+        }
+        return json.dumps(key_dict, sort_keys=True)
+
+    def get(self, country: Optional[str], query: Optional[str], page: int) -> Optional[Dict]:
         """Get cached result if exists and not expired"""
-        if key not in self.cache:
-            return None
+        key = self._generate_key(country, query, page)
 
-        # Check if expired
-        if time.time() - self.timestamps[key] > self.ttl:
-            del self.cache[key]
-            del self.timestamps[key]
-            return None
+        with self.lock:
+            if key not in self.cache:
+                return None
 
-        return self.cache[key]
+            value, timestamp = self.cache[key]
 
-    def set(self, key: str, value: Dict) -> None:
-        """Set cache with LRU eviction"""
-        # Remove oldest entry if cache is full
-        if len(self.cache) >= self.max_size:
-            oldest_key = min(self.timestamps, key=self.timestamps.get)
-            del self.cache[oldest_key]
-            del self.timestamps[oldest_key]
+            # Check if expired
+            if time.time() - timestamp > self.ttl:
+                del self.cache[key]
+                return None
 
-        self.cache[key] = value
-        self.timestamps[key] = time.time()
+            # Move to end (mark as recently used for LRU)
+            self.cache.move_to_end(key)
+            return value
+
+    def set(self, country: Optional[str], query: Optional[str], page: int, value: Dict) -> None:
+        """Set cache with LRU eviction (thread-safe)"""
+        key = self._generate_key(country, query, page)
+
+        with self.lock:
+            # Remove oldest entry if cache is full (before adding new item)
+            if len(self.cache) >= self.max_size:
+                oldest_key = next(iter(self.cache))
+                del self.cache[oldest_key]
+
+            # Store value with timestamp
+            self.cache[key] = (value, time.time())
+            self.cache.move_to_end(key)
 
     def clear(self):
         """Clear entire cache"""
-        self.cache.clear()
-        self.timestamps.clear()
+        with self.lock:
+            self.cache.clear()
 
 
 # Global cache instance
@@ -103,8 +124,7 @@ def search_index() -> Tuple[Response, int]:
         jsonify(
             {
                 "success": True,
-                "data": {"message": "Search API ready (implemented in Story 1.4)"},
-                "error": None,
+                "message": "Search API ready (implemented in Story 1.4)"
             }
         ),
         200,
@@ -217,22 +237,34 @@ def get_search_results() -> Tuple[Response, int]:
         # Extract and validate query parameters
         country = request.args.get('country', '').strip() or None
         query = request.args.get('query', '').strip() or None
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
 
-        # Build cache key
-        cache_key = f"{country or 'all'}#{query or 'all'}#{page}"
+        # Validate pagination parameters
+        try:
+            page = int(request.args.get('page', 1))
+            per_page = int(request.args.get('per_page', 20))
+        except (ValueError, TypeError):
+            return jsonify({
+                "success": False,
+                "message": "参数错误：页码和每页数量必须是整数"
+            }), 400
+
+        # Validate page and per_page bounds
+        if page < 1:
+            page = 1
+        if per_page < 1 or per_page > 100:
+            per_page = min(max(per_page, 1), 100)
 
         # Check cache first
-        cached_result = results_cache.get(cache_key)
+        cached_result = results_cache.get(country, query, page)
         if cached_result:
-            cached_result['cached'] = True
-            logger.debug(f"Cache hit for: {cache_key}")
+            logger.debug(f"Cache hit: country={country}, query={query}, page={page}")
             return jsonify({
                 "success": True,
                 "timestamp": cached_result.get('timestamp'),
                 "cached": True,
-                **{k: v for k, v in cached_result.items() if k != 'timestamp'}
+                "has_next": cached_result.get('has_next', False),
+                "has_previous": cached_result.get('has_previous', False),
+                **{k: v for k, v in cached_result.items() if k not in ['timestamp', 'has_next', 'has_previous']}
             }), 200
 
         # Fetch from database with timeout
@@ -250,6 +282,10 @@ def get_search_results() -> Tuple[Response, int]:
 
             elapsed = time.time() - start_time
 
+            # Calculate pagination metadata
+            has_next = page < result['total_pages']
+            has_previous = page > 1
+
             # Prepare response
             response_data = {
                 "success": True,
@@ -262,11 +298,13 @@ def get_search_results() -> Tuple[Response, int]:
                 "current_page": result['current_page'],
                 "per_page": result['per_page'],
                 "total_pages": result['total_pages'],
+                "has_next": has_next,
+                "has_previous": has_previous,
                 "companies": result['companies']
             }
 
             # Cache the result
-            results_cache.set(cache_key, response_data)
+            results_cache.set(country, query, page, response_data)
 
             logger.info(f"Query complete in {elapsed:.2f}s: country={country}, query={query}, page={page}, results={len(result['companies'])}")
 
@@ -278,10 +316,9 @@ def get_search_results() -> Tuple[Response, int]:
             # If query timeout, try to return cached result if available
             if elapsed > timeout_seconds:
                 logger.warning(f"Database query timeout (>{timeout_seconds}s): {db_error}")
-                cached_result = results_cache.get(cache_key)
+                cached_result = results_cache.get(country, query, page)
                 if cached_result:
-                    cached_result['cached'] = True
-                    logger.info(f"Returning cached fallback for timeout: {cache_key}")
+                    logger.info(f"Returning cached fallback for timeout")
                     return jsonify({
                         "success": True,
                         "timestamp": cached_result.get('timestamp'),
@@ -294,7 +331,7 @@ def get_search_results() -> Tuple[Response, int]:
             logger.error(f"Database error retrieving results: {db_error}")
             return jsonify({
                 "success": False,
-                "message": "加载失败，请重试"
+                "message": "搜索失败，请稍后重试"
             }), 500
 
     except ValueError as e:
@@ -308,5 +345,5 @@ def get_search_results() -> Tuple[Response, int]:
         logger.error(f"Unexpected error in get_search_results: {e}")
         return jsonify({
             "success": False,
-            "message": "加载失败，请重试"
+            "message": "搜索失败，请稍后重试"
         }), 500

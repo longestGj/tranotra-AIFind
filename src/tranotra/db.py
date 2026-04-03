@@ -4,6 +4,7 @@ from typing import List, Dict, Optional
 import logging
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from tranotra.infrastructure.database import get_db
 from tranotra.core.models import Company, SearchHistory
 
@@ -197,12 +198,16 @@ def get_companies_paginated(
         total_count = query_obj.count()
 
         # Calculate pagination
-        offset = (page - 1) * per_page
-        total_pages = (total_count + per_page - 1) // per_page
+        offset = max(0, (page - 1) * per_page)
+        if total_count == 0:
+            total_pages = 1
+        else:
+            total_pages = (total_count + per_page - 1) // per_page
 
-        # Get paginated results, sorted by score descending
+        # Get paginated results, sorted by score descending (handle NULLs)
+        # Use COALESCE to treat NULL scores as 0 for consistent sorting
         companies = query_obj.order_by(
-            Company.prospect_score.desc()
+            func.coalesce(Company.prospect_score, 0).desc()
         ).offset(offset).limit(per_page).all()
 
         # Convert to dicts

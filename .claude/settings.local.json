@@ -58,7 +58,12 @@
       "Bash(python -m black --check src/tranotra/gemini_client.py src/tranotra/core/exceptions.py)",
       "Bash(python -m black src/tranotra/gemini_client.py src/tranotra/core/exceptions.py tests/test_gemini_client.py)",
       "Bash(python -m pytest tests/test_gemini_client.py -v --tb=line)",
-      "Bash(python -m pytest tests/ -q)"
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python -m pytest tests/test_search_form.py::TestHomePageRoute::test_home_page_loads_successfully -xvs)",
+      "Bash(wc -l /e/04Claude/08B2B_AIfind/_bmad-output/implementation-artifacts/2-1-*.md)",
+      "Bash(python -m pytest tests/test_search_results_api.py -v)",
+      "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_custom_per_page -v -s)",
+      "Bash(python -m pytest tests/test_search_results_api.py -v --tb=short)"
     ]
   }
 }

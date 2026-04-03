@@ -112,7 +112,9 @@ async function fetchResults() {
         // Check if empty
         if (currentState.companies.length === 0) {
             emptyResults.style.display = 'block';
+            resultsContainer.innerHTML = '';
             pagination.style.display = 'none';
+            cacheNotification.style.display = 'none';
             return;
         }
 
@@ -208,22 +210,22 @@ function createCompanyCard(company) {
 
         <div class="card-contact">
             <label>📧 Email:</label>
-            <a href="mailto:${company.contact_email || '#'}">${escapeHtml(company.contact_email || 'N/A')}</a>
+            <a href="mailto:${sanitizeEmail(company.contact_email) ? 'mailto:' + sanitizeEmail(company.contact_email) : '#'}">${escapeHtml(company.contact_email || 'N/A')}</a>
 
             <label>🔗 LinkedIn:</label>
-            <a href="https://${company.linkedin_url || '#'}" target="_blank">${escapeHtml(company.linkedin_url || 'N/A')}</a>
+            <a href="${sanitizeUrl(company.linkedin_url)}" target="_blank">${escapeHtml(company.linkedin_url || 'N/A')}</a>
 
             <label>🌐 Website:</label>
-            <a href="https://${company.website || '#'}" target="_blank">${escapeHtml(company.website || 'N/A')}</a>
+            <a href="${sanitizeUrl(company.website)}" target="_blank">${escapeHtml(company.website || 'N/A')}</a>
 
             <label>💼 联系职位:</label>
             <span>${escapeHtml(company.best_contact_title || 'N/A')}</span>
         </div>
 
         <div class="card-actions">
-            <button class="action-btn" onclick="copyToClipboard('${company.contact_email || ''}', this)">📋 复制邮箱</button>
-            <button class="action-btn" onclick="window.open('https://${company.linkedin_url || '#'}', '_blank')">🔗 打开LinkedIn</button>
-            <button class="action-btn" onclick="window.open('https://${company.website || '#'}', '_blank')">🌐 打开网站</button>
+            <button class="action-btn" data-email="${escapeHtml(company.contact_email || '')}" onclick="copyToClipboard(this.getAttribute('data-email'), this)">📋 复制邮箱</button>
+            <button class="action-btn" data-url="${sanitizeUrl(company.linkedin_url)}" onclick="openUrl(this.getAttribute('data-url'))">🔗 打开LinkedIn</button>
+            <button class="action-btn" data-url="${sanitizeUrl(company.website)}" onclick="openUrl(this.getAttribute('data-url'))">🌐 打开网站</button>
         </div>
     `;
     return card;
@@ -267,9 +269,9 @@ function renderTableView() {
             <td>${escapeHtml(company.country || 'N/A')}</td>
             <td>${company.prospect_score || 'N/A'}</td>
             <td><span class="priority-badge priority-${(company.priority || 'LOW').toLowerCase()}">${company.priority || 'N/A'}</span></td>
-            <td><a href="mailto:${company.contact_email || '#'}">${escapeHtml(company.contact_email || 'N/A')}</a></td>
-            <td><a href="https://${company.linkedin_url || '#'}" target="_blank">LinkedIn</a></td>
-            <td><a href="https://${company.website || '#'}" target="_blank">Website</a></td>
+            <td><a href="${sanitizeEmail(company.contact_email) ? 'mailto:' + sanitizeEmail(company.contact_email) : '#'}">${escapeHtml(company.contact_email || 'N/A')}</a></td>
+            <td><a href="${sanitizeUrl(company.linkedin_url)}" target="_blank">LinkedIn</a></td>
+            <td><a href="${sanitizeUrl(company.website)}" target="_blank">Website</a></td>
         `;
         tbody.appendChild(row);
     });
@@ -298,6 +300,34 @@ function escapeHtml(text) {
 }
 
 /**
+ * Validate and sanitize URLs
+ */
+function sanitizeUrl(url) {
+    if (!url || typeof url !== 'string') return '#';
+    url = url.trim();
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+    if (url.startsWith('//')) {
+        return 'https:' + url;
+    }
+    return '#';
+}
+
+/**
+ * Validate and encode email
+ */
+function sanitizeEmail(email) {
+    if (!email || typeof email !== 'string') return '';
+    email = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailRegex.test(email)) {
+        return encodeURIComponent(email);
+    }
+    return '';
+}
+
+/**
  * Copy to clipboard
  */
 function copyToClipboard(text, button) {
@@ -315,6 +345,16 @@ function copyToClipboard(text, button) {
         console.error('Failed to copy:', err);
         alert('复制失败');
     });
+}
+
+/**
+ * Safely open URL
+ */
+function openUrl(url) {
+    const safeUrl = sanitizeUrl(url);
+    if (safeUrl !== '#') {
+        window.open(safeUrl, '_blank', 'noopener,noreferrer');
+    }
 }
 
 /**
