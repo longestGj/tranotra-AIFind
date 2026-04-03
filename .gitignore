@@ -65,6 +65,12 @@ node_modules/
 package-lock.json
 yarn.lock
 
+# Large binary files (gstack and other large executables)
+.claude/skills/gstack/bin/
+.claude/skills/**/bin/
+*.exe
+*.dll
+
 # OS
 .DS_Store
 Thumbs.db
