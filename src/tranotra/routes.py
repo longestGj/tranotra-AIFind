@@ -13,7 +13,7 @@ from flask import Blueprint, Response, jsonify, request, render_template, curren
 
 from tranotra.gemini_client import initialize_gemini, call_gemini_grounding_search
 from tranotra.core.exceptions import GeminiTimeoutError, GeminiError
-from tranotra.db import get_today_statistics, get_companies_paginated
+from tranotra.db import get_today_statistics, get_companies_paginated, parse_response_and_insert
 
 logger = logging.getLogger(__name__)
 
@@ -182,12 +182,37 @@ def search_api() -> Tuple[Response, int]:
                 400
             )
 
-        logger.info(f"Search successful: country={country}, format={fmt}")
+        logger.info(f"Response format detected: {fmt}")
+
+        # Parse response and insert into database (Story 1.5)
+        parse_result = parse_response_and_insert(country, keyword, response, fmt)
+
+        if not parse_result["success"]:
+            logger.error(f"Parsing failed: {parse_result['message']}")
+            return (
+                jsonify({
+                    "status": "error",
+                    "message": parse_result["message"]
+                }),
+                500
+            )
+
+        # Success: data has been parsed and inserted
+        logger.info(
+            f"Search and parsing successful: "
+            f"country={country}, format={fmt}, "
+            f"new={parse_result['new_count']}, "
+            f"duplicates={parse_result['duplicate_count']}"
+        )
+
         return (
             jsonify({
                 "status": "success",
                 "format": fmt,
-                "message": "搜索成功，正在处理结果..."
+                "message": parse_result["message"],
+                "new_count": parse_result["new_count"],
+                "duplicate_count": parse_result["duplicate_count"],
+                "avg_score": parse_result["avg_score"]
             }),
             200
         )

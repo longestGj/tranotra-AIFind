@@ -370,6 +370,167 @@ def get_today_statistics() -> Dict:
         }
 
 
+# Parsing and Insertion Pipeline (Story 1-5)
+
+
+def parse_response_and_insert(
+    country: str,
+    query: str,
+    response: str,
+    format: str
+) -> Dict:
+    """Parse Gemini response and insert companies into database
+
+    Args:
+        country: Country from search request
+        query: Search keyword from request
+        response: Raw response from Gemini API
+        format: Response format ("JSON", "Markdown", or "CSV")
+
+    Returns:
+        Dict with insertion results:
+        {
+            "success": bool,
+            "new_count": int,
+            "duplicate_count": int,
+            "error_count": int,
+            "avg_score": float,
+            "high_priority_count": int,
+            "message": str
+        }
+    """
+    from tranotra.parser import CompanyParser
+
+    db = get_db()
+    parser = CompanyParser()
+
+    result = {
+        "success": False,
+        "new_count": 0,
+        "duplicate_count": 0,
+        "error_count": 0,
+        "avg_score": 0.0,
+        "high_priority_count": 0,
+        "message": ""
+    }
+
+    try:
+        # Parse response into company records
+        parsed_companies = parser.parse_response(response, format)
+        if not parsed_companies:
+            result["message"] = "解析失败：返回数据为空"
+            logger.error(f"Empty response from {format} parser")
+            return result
+
+        logger.info(f"Parsed {len(parsed_companies)} companies from {format} response")
+
+        # Filter and prepare records
+        prepared_companies = parser._filter_and_prepare_records(parsed_companies)
+        if not prepared_companies:
+            result["message"] = "解析失败：没有有效的公司记录"
+            logger.error("No valid companies after filtering")
+            return result
+
+        # Process companies: check for duplicates and insert
+        new_companies = []
+        scores_for_avg = []
+
+        try:
+            for company_data in prepared_companies:
+                linkedin_normalized = company_data.get("linkedin_normalized", "")
+
+                # Check for duplicate by linkedin_normalized
+                if linkedin_normalized:
+                    existing = db.query(Company).filter_by(
+                        linkedin_normalized=linkedin_normalized
+                    ).first()
+
+                    if existing:
+                        result["duplicate_count"] += 1
+                        logger.info(f"跳过重复: {company_data.get('name')}")
+                        continue
+
+                # Insert new company
+                try:
+                    company_data["source_query"] = query
+                    company_id = insert_company(company_data)
+                    result["new_count"] += 1
+                    new_companies.append(company_data)
+
+                    # Collect score for average calculation
+                    score = company_data.get("prospect_score", 0)
+                    if isinstance(score, int) and 1 <= score <= 10:
+                        scores_for_avg.append(score)
+
+                    logger.info(f"插入新公司: {company_data.get('name')}")
+
+                except ValueError as e:
+                    result["error_count"] += 1
+                    logger.error(f"插入失败 {company_data.get('name')}: {e}")
+                    continue
+
+            # Calculate statistics for search history
+            if scores_for_avg:
+                result["avg_score"] = round(sum(scores_for_avg) / len(scores_for_avg), 1)
+                result["high_priority_count"] = sum(1 for s in scores_for_avg if s >= 8)
+            else:
+                result["avg_score"] = 0.0
+                result["high_priority_count"] = 0
+
+            # Create search history record
+            total_count = len(parsed_companies)
+            history_data = {
+                "country": country,
+                "query": query,
+                "result_count": total_count,
+                "new_count": result["new_count"],
+                "duplicate_count": result["duplicate_count"],
+                "avg_score": result["avg_score"],
+                "high_priority_count": result["high_priority_count"]
+            }
+
+            try:
+                insert_search_history(history_data)
+                logger.info(
+                    f"创建搜索历史: {country}/{query} "
+                    f"(新增{result['new_count']}, 重复{result['duplicate_count']})"
+                )
+            except Exception as e:
+                logger.error(f"Failed to insert search history: {e}")
+                result["error_count"] += 1
+
+            # Commit all changes
+            db.commit()
+
+            # Build result message
+            result["success"] = True
+            result["message"] = (
+                f"处理 {total_count} 条结果，"
+                f"新增 {result['new_count']} 条，"
+                f"重复 {result['duplicate_count']} 条"
+            )
+
+            logger.info(f"Parse and insert complete: {result['message']}")
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error during insertion pipeline: {e}")
+            result["message"] = "数据保存失败，请稍后重试"
+            result["error_count"] += 1
+            return result
+
+    except ValueError as e:
+        logger.error(f"Parser error: {e}")
+        result["message"] = f"搜索失败：{str(e)}"
+        result["error_count"] += 1
+    except Exception as e:
+        logger.error(f"Unexpected error in parse_response_and_insert: {e}")
+        result["message"] = "搜索失败，请稍后重试"
+        result["error_count"] += 1
+
+    return result
+
+
 # Phase 2+ Placeholder Functions
 
 
@@ -442,6 +603,8 @@ __all__ = [
     "get_companies_paginated",
     "insert_search_history",
     "get_search_history",
+    "get_today_statistics",
+    "parse_response_and_insert",
     "insert_contact",
     "insert_email",
     "get_today_statistics",
