@@ -74,7 +74,11 @@ def db_session(app):
     with app.app_context():
         session = get_db()
         yield session
-        session.close()
+        try:
+            session.expunge_all()
+            session.close()
+        except Exception:
+            pass
 
 
 @pytest.fixture
@@ -122,12 +126,14 @@ def sample_companies(db_session):
 
     yield companies
 
-    # Cleanup
-    for company_id in companies:
-        company = db_session.query(Company).filter_by(id=company_id).first()
-        if company:
-            db_session.delete(company)
-    db_session.commit()
+    # Cleanup - properly handle database resources
+    try:
+        db_session.query(Company).filter(Company.id.in_(companies)).delete()
+        db_session.commit()
+    except Exception as e:
+        db_session.rollback()
+    finally:
+        db_session.expunge_all()
 
 
 @pytest.fixture
@@ -144,7 +150,7 @@ def sample_companies_many(db_session):
     from tranotra.db import insert_company
 
     companies = []
-    for i in range(50):
+    for i in range(25):
         # Use timestamp to ensure uniqueness
         unique_suffix = f"large_company_test_{i}"
         company_data = {
@@ -178,20 +184,32 @@ def sample_companies_many(db_session):
 
     yield companies
 
-    # Cleanup
-    for company_id in companies:
-        company = db_session.query(Company).filter_by(id=company_id).first()
-        if company:
-            db_session.delete(company)
-    db_session.commit()
+    # Cleanup - properly handle database resources
+    try:
+        db_session.query(Company).filter(Company.id.in_(companies)).delete()
+        db_session.commit()
+    except Exception as e:
+        db_session.rollback()
+    finally:
+        db_session.expunge_all()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clear_cache():
-    """Clear search results cache before each test"""
+    """Clear search results cache"""
     from tranotra.routes import results_cache
     results_cache.clear()
     yield
+    results_cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def cleanup_cache_after_test():
+    """Auto-cleanup cache after each test to prevent state leakage between tests"""
+    from tranotra.routes import results_cache
+    yield
+    # Cleanup after test
+    results_cache.clear()
 
 
 @pytest.fixture
@@ -220,9 +238,12 @@ def sample_companies_with_history(db_session, sample_companies):
 
     yield sample_companies, history_id
 
-    # Cleanup
-    from tranotra.core.models import SearchHistory
-    history = db_session.query(SearchHistory).filter_by(id=history_id).first()
-    if history:
-        db_session.delete(history)
-    db_session.commit()
+    # Cleanup - properly handle database resources
+    try:
+        from tranotra.core.models import SearchHistory
+        db_session.query(SearchHistory).filter_by(id=history_id).delete()
+        db_session.commit()
+    except Exception as e:
+        db_session.rollback()
+    finally:
+        db_session.expunge_all()

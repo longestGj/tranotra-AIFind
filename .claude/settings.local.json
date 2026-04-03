@@ -66,7 +66,9 @@
       "Bash(python -m pytest tests/test_search_results_api.py -v --tb=short)",
       "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_pagination_page_2 -v)",
       "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_caching -v -s)",
-      "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_caching -v)"
+      "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_caching -v)",
+      "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_company_fields -v)",
+      "Bash(python -m pytest tests/test_search_results_api.py -v --tb=line)"
     ]
   }
 }
