@@ -1,10 +1,34 @@
-"""Custom exceptions for Tranotra Leads (Phase 2+)
+"""Custom exceptions for Tranotra Leads
 
-This is a placeholder for Phase 2+ development.
-Will include:
-- API-specific exceptions (GeminiError, ApolloError, etc.)
-- Business logic exceptions
-- Validation exceptions
+Defines exception hierarchy for API clients, business logic, and validation errors.
 """
 
-# Placeholder - to be implemented in Phase 2+
+
+class APIError(Exception):
+    """Base exception for all API errors"""
+
+    pass
+
+
+class GeminiError(APIError):
+    """Base exception for Gemini API errors"""
+
+    pass
+
+
+class GeminiTimeoutError(GeminiError):
+    """Raised when Gemini API call times out"""
+
+    pass
+
+
+class GeminiRateLimitError(GeminiError):
+    """Raised when Gemini API rate limit is exceeded"""
+
+    pass
+
+
+class GeminiParseError(GeminiError):
+    """Raised when Gemini response cannot be parsed"""
+
+    pass
