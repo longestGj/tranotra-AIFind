@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索结果 - Tranotra Leads</title>
+    <link rel="stylesheet" href="/static/css/results.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header showing search context -->
+        <div class="results-header">
+            <h1 id="results-title">搜索结果</h1>
+            <button class="back-btn" onclick="goBackToSearch()">← 返回搜索</button>
+        </div>
+
+        <!-- Statistics Card -->
+        <div class="stats-card">
+            <div class="stat">
+                <label>新增:</label>
+                <span class="value" id="stat-new-count">0</span>
+            </div>
+            <div class="stat">
+                <label>重复:</label>
+                <span class="value" id="stat-dup-count">0</span>
+            </div>
+            <div class="stat">
+                <label>平均评分:</label>
+                <span class="value" id="stat-avg-score">0</span>
+            </div>
+        </div>
+
+        <!-- View Toggle Buttons -->
+        <div class="view-toggle">
+            <button class="view-btn active" data-view="card" onclick="switchView('card')">卡片视图</button>
+            <button class="view-btn" data-view="table" onclick="switchView('table')">表格视图</button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading-indicator" id="loading-indicator">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+        </div>
+
+        <!-- Empty Results Message -->
+        <div class="empty-results" id="empty-results" style="display: none;">
+            <h2>本次未找到，建议修改搜索词</h2>
+            <div class="suggestions">
+                <p>💡 建议:</p>
+                <ul>
+                    <li>尝试使用更通用的关键词（如: manufacturer, supplier）</li>
+                    <li>尝试其他国家的相同关键词</li>
+                    <li><a href="javascript:void(0)" onclick="goBackToSearch()">查看搜索历史，找高效的搜索词</a></li>
+                </ul>
+            </div>
+            <button class="primary-btn" onclick="goBackToSearch()">返回搜索</button>
+        </div>
+
+        <!-- Results Container (populated by JavaScript) -->
+        <div id="results-container" class="results-container">
+            <!-- Card view or table view will be rendered here -->
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="pagination">
+            <button class="page-btn prev-btn" id="prev-btn" onclick="previousPage()">← 上一页</button>
+            <span class="page-info" id="page-info">第 1 页</span>
+            <button class="page-btn next-btn" id="next-btn" onclick="nextPage()">下一页 →</button>
+        </div>
+    </div>
+
+    <!-- Cache notification (optional) -->
+    <div class="cache-notification" id="cache-notification" style="display: none;">
+        <p id="cache-message">数据加载中（显示缓存结果）</p>
+    </div>
+
+    <script src="/static/js/results.js"></script>
+</body>
+</html>
