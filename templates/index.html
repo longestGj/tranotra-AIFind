@@ -1,34 +1,245 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tranotra Leads</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Tranotra Leads - 公司搜索</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input[type="text"]::placeholder {
+            color: #999;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin: 30px 0;
+        }
+
+        button[type="submit"] {
+            flex: 1;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s, transform 0.2s;
+        }
+
+        button[type="submit"]:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        button[type="submit"]:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .countdown {
+            text-align: center;
+            color: #667eea;
+            font-size: 13px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error-message {
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .success-message {
+            background-color: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+
+        .statistics {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 6px;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .stats-title {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stats-content {
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .examples {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .examples-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .examples-text {
+            font-style: italic;
+            color: #999;
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
+    <div class="container">
         <h1>Tranotra Leads</h1>
-        <p class="lead">Automated customer discovery and outreach pipeline</p>
+        <p class="subtitle">自动发现潜在客户</p>
 
-        <div class="alert alert-info">
-            <strong>Status:</strong> Phase 1 MVP - Coming Soon!
+        <form id="searchForm" method="POST" action="/api/search">
+            <div class="form-group">
+                <label for="country">选择国家 *</label>
+                <select id="country" name="country" required>
+                    <option value="">-- 请选择国家 --</option>
+                    <option value="Vietnam">Vietnam (越南)</option>
+                    <option value="Thailand">Thailand (泰国)</option>
+                    <option value="Indonesia">Indonesia (印尼)</option>
+                    <option value="UAE">UAE (阿联酋)</option>
+                    <option value="Saudi Arabia">Saudi Arabia (沙特)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="keyword">搜索关键词 *</label>
+                <input
+                    type="text"
+                    id="keyword"
+                    name="keyword"
+                    placeholder="例如: cable mfg, synthetic leather, flooring export"
+                    required
+                >
+            </div>
+
+            <div class="countdown" id="countdownText" style="display: none;"></div>
+
+            <div class="form-actions">
+                <button type="submit" id="searchBtn">
+                    <span id="btnText">🔍 搜索</span>
+                </button>
+            </div>
+        </form>
+
+        <div id="errorMsg" class="message error-message"></div>
+        <div id="successMsg" class="message success-message"></div>
+
+        <div class="examples">
+            <div class="examples-title">💡 搜索示例</div>
+            <div class="examples-text">PVC manufacturer, cable mfg, synthetic leather, flooring export, plastic film</div>
         </div>
 
-        <h2>Features</h2>
-        <ul>
-            <li>Company discovery via Gemini AI</li>
-            <li>Lead scoring and filtering</li>
-            <li>Contact information gathering</li>
-            <li>Personalized email generation</li>
-            <li>Analytics dashboard</li>
-        </ul>
-
-        <hr>
-
-        <p>Application initialized successfully on Story 1.1</p>
+        <div class="statistics">
+            <div class="stats-title">📊 今日统计</div>
+            <div class="stats-content" id="statsContent">
+                搜索 {{ stats.searches }} 次 | 新增 {{ stats.new_companies }} 家 | 去重率 {{ "%.1f"|format(stats.dedup_rate) }}%
+            </div>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/search.js"></script>
 </body>
 </html>
