@@ -38,6 +38,11 @@ def client(app):
     Returns:
         FlaskClient: Test client for making requests
     """
+    # Fix werkzeug version issue
+    import werkzeug
+    if not hasattr(werkzeug, '__version__'):
+        werkzeug.__version__ = '3.0.0'
+
     return app.test_client()
 
 
