@@ -186,6 +186,14 @@ def sample_companies_many(db_session):
     db_session.commit()
 
 
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Clear search results cache before each test"""
+    from tranotra.routes import results_cache
+    results_cache.clear()
+    yield
+
+
 @pytest.fixture
 def sample_companies_with_history(db_session, sample_companies):
     """Create sample companies with search history

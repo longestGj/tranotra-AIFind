@@ -63,7 +63,10 @@
       "Bash(wc -l /e/04Claude/08B2B_AIfind/_bmad-output/implementation-artifacts/2-1-*.md)",
       "Bash(python -m pytest tests/test_search_results_api.py -v)",
       "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_custom_per_page -v -s)",
-      "Bash(python -m pytest tests/test_search_results_api.py -v --tb=short)"
+      "Bash(python -m pytest tests/test_search_results_api.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_pagination_page_2 -v)",
+      "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_caching -v -s)",
+      "Bash(python -m pytest tests/test_search_results_api.py::TestSearchResultsAPI::test_get_results_caching -v)"
     ]
   }
 }
