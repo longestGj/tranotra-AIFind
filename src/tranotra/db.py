@@ -153,6 +153,121 @@ def get_companies_by_search(country: str, query: str) -> List[Company]:
         raise
 
 
+def get_companies_paginated(
+    country: Optional[str] = None,
+    query: Optional[str] = None,
+    page: int = 1,
+    per_page: int = 20
+) -> Dict:
+    """Get paginated company results with optional filtering
+
+    Args:
+        country: Optional country filter
+        query: Optional search keyword filter
+        page: Page number (1-indexed, default=1)
+        per_page: Results per page (default=20, max=100)
+
+    Returns:
+        Dict containing:
+            - total: Total number of matching companies
+            - total_pages: Total number of pages
+            - current_page: Current page number
+            - per_page: Results per page
+            - companies: List of company dicts (23 fields each)
+            - new_count: Count of new companies (from search_history)
+            - duplicate_count: Count of duplicates (from search_history)
+            - avg_score: Average prospect score (from search_history)
+    """
+    db = get_db()
+    try:
+        # Validate pagination parameters
+        page = max(1, int(page))
+        per_page = min(100, max(1, int(per_page)))
+
+        # Build base query
+        query_obj = db.query(Company)
+
+        # Apply filters if provided
+        if country:
+            query_obj = query_obj.filter(Company.country == country)
+        if query:
+            query_obj = query_obj.filter(Company.source_query == query)
+
+        # Get total count before pagination
+        total_count = query_obj.count()
+
+        # Calculate pagination
+        offset = (page - 1) * per_page
+        total_pages = (total_count + per_page - 1) // per_page
+
+        # Get paginated results, sorted by score descending
+        companies = query_obj.order_by(
+            Company.prospect_score.desc()
+        ).offset(offset).limit(per_page).all()
+
+        # Convert to dicts
+        companies_data = []
+        for company in companies:
+            companies_data.append({
+                "id": company.id,
+                "name": company.name,
+                "country": company.country,
+                "city": company.city,
+                "year_established": company.year_established,
+                "employees": company.employees,
+                "estimated_revenue": company.estimated_revenue,
+                "main_products": company.main_products,
+                "export_markets": company.export_markets,
+                "eu_us_jp_export": company.eu_us_jp_export,
+                "raw_materials": company.raw_materials,
+                "recommended_product": company.recommended_product,
+                "recommendation_reason": company.recommendation_reason,
+                "website": company.website,
+                "contact_email": company.contact_email,
+                "linkedin_url": company.linkedin_url,
+                "linkedin_normalized": company.linkedin_normalized,
+                "best_contact_title": company.best_contact_title,
+                "prospect_score": company.prospect_score,
+                "priority": company.priority,
+                "source_query": company.source_query,
+                "created_at": company.created_at.isoformat() if company.created_at else None,
+                "updated_at": company.updated_at.isoformat() if company.updated_at else None,
+            })
+
+        # Get search history stats if filters provided
+        new_count = 0
+        duplicate_count = 0
+        avg_score = 0.0
+
+        if country and query:
+            history = db.query(SearchHistory).filter(
+                SearchHistory.country == country,
+                SearchHistory.query == query
+            ).order_by(SearchHistory.created_at.desc()).first()
+
+            if history:
+                new_count = history.new_count or 0
+                duplicate_count = history.duplicate_count or 0
+                avg_score = round(history.avg_score or 0.0, 1)
+
+        logger.info(f"Retrieved {len(companies_data)} companies (page {page}/{total_pages}) for filters: country={country}, query={query}")
+
+        return {
+            "total": total_count,
+            "total_pages": total_pages,
+            "current_page": page,
+            "per_page": per_page,
+            "companies": companies_data,
+            "new_count": new_count,
+            "duplicate_count": duplicate_count,
+            "avg_score": avg_score,
+        }
+
+    except Exception as e:
+        logger.error(f"Error retrieving paginated companies: {e}")
+        raise
+
+
 # Search History Operations
 
 
@@ -231,13 +346,58 @@ def insert_email(data: Dict) -> int:
     raise NotImplementedError("Email drafting is Phase 2+ functionality")
 
 
+def get_today_statistics() -> Dict:
+    """Get search statistics for today
+
+    Returns:
+        Dict: Statistics including searches, new_companies, dedup_rate
+
+    Raises:
+        RuntimeError: If database session cannot be obtained
+    """
+    from datetime import datetime, date
+    from sqlalchemy import func
+
+    try:
+        session = get_db()
+        today = date.today()
+
+        # Query all searches from today
+        today_searches = session.query(SearchHistory).filter(
+            func.date(SearchHistory.created_at) == today
+        ).all()
+
+        total_searches = len(today_searches)
+        total_new = sum(s.new_count for s in today_searches)
+        total_duplicates = sum(s.duplicate_count for s in today_searches)
+
+        # Calculate dedup rate
+        total = total_new + total_duplicates
+        dedup_rate = (total_duplicates / total * 100) if total > 0 else 0
+
+        return {
+            "searches": total_searches,
+            "new_companies": total_new,
+            "dedup_rate": round(dedup_rate, 1)
+        }
+    except Exception as e:
+        logger.error(f"Error getting today's statistics: {e}")
+        return {
+            "searches": 0,
+            "new_companies": 0,
+            "dedup_rate": 0
+        }
+
+
 __all__ = [
     "insert_company",
     "update_company",
     "get_companies_by_score",
     "get_companies_by_search",
+    "get_companies_paginated",
     "insert_search_history",
     "get_search_history",
     "insert_contact",
     "insert_email",
+    "get_today_statistics",
 ]
