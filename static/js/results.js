@@ -14,7 +14,8 @@ let currentState = {
     scrollPosition: 0,
     newCount: 0,
     duplicateCount: 0,
-    avgScore: 0
+    avgScore: 0,
+    isFetching: false  // Prevent duplicate requests
 };
 
 /**
@@ -61,11 +62,20 @@ function updateTitle() {
  * Fetch results from API
  */
 async function fetchResults() {
+    // Prevent duplicate concurrent requests
+    if (currentState.isFetching) {
+        console.warn('Request already in progress, ignoring duplicate');
+        return;
+    }
+
     const loadingIndicator = document.getElementById('loading-indicator');
     const resultsContainer = document.getElementById('results-container');
     const emptyResults = document.getElementById('empty-results');
     const pagination = document.getElementById('pagination');
     const cacheNotification = document.getElementById('cache-notification');
+
+    // Mark as fetching
+    currentState.isFetching = true;
 
     // Show loading
     loadingIndicator.style.display = 'block';
@@ -94,6 +104,7 @@ async function fetchResults() {
         if (!data.success) {
             showError(data.message || '加载失败');
             loadingIndicator.style.display = 'none';
+            currentState.isFetching = false;
             return;
         }
 
@@ -135,11 +146,13 @@ async function fetchResults() {
         // Show pagination
         updatePagination();
         pagination.style.display = 'flex';
+        currentState.isFetching = false;
 
     } catch (error) {
         console.error('Error fetching results:', error);
         showError('加载失败，请重试');
         loadingIndicator.style.display = 'none';
+        currentState.isFetching = false;
     }
 }
 
@@ -159,9 +172,13 @@ function renderCardView() {
     const container = document.getElementById('results-container');
     container.innerHTML = '';
     container.className = 'results-container card-view';
+    container.setAttribute('role', 'region');
+    container.setAttribute('aria-label', `搜索结果列表，共 ${currentState.companies.length} 家公司`);
 
     currentState.companies.forEach((company, index) => {
-        const card = createCompanyCard(company);
+        const card = createCompanyCard(company, index);
+        card.setAttribute('role', 'article');
+        card.setAttribute('aria-labelledby', `company-name-${index}`);
         container.appendChild(card);
     });
 }
@@ -169,20 +186,20 @@ function renderCardView() {
 /**
  * Create a single company card
  */
-function createCompanyCard(company) {
+function createCompanyCard(company, index = 0) {
     const card = document.createElement('div');
     card.className = 'company-card';
     card.innerHTML = `
         <div class="card-header">
-            <h3 class="company-name">${escapeHtml(company.name)}</h3>
+            <h3 class="company-name" id="company-name-${index}">${escapeHtml(company.name)}</h3>
             <p class="company-location">${escapeHtml(company.city || 'N/A')}, ${escapeHtml(company.country || 'N/A')}</p>
         </div>
 
-        <div class="score-badge" style="background-color: ${getScoreColor(company.prospect_score)}">
+        <div class="score-badge" style="background-color: ${getScoreColor(company.prospect_score)}" role="img" aria-label="评分: ${company.prospect_score || 'N/A'}/10">
             Score: ${company.prospect_score || 'N/A'}/10
         </div>
 
-        <div class="priority-badge priority-${sanitizeCssClass(company.priority || 'LOW')}">
+        <div class="priority-badge priority-${sanitizeCssClass(company.priority || 'LOW')}" aria-label="优先级: ${escapeHtml(company.priority || 'N/A')}">
             ${escapeHtml(company.priority || 'N/A')}
         </div>
 
@@ -217,22 +234,22 @@ function createCompanyCard(company) {
 
         <div class="card-contact">
             <label>📧 Email:</label>
-            <a href="mailto:${sanitizeEmail(company.contact_email) ? 'mailto:' + sanitizeEmail(company.contact_email) : '#'}">${escapeHtml(company.contact_email || 'N/A')}</a>
+            <a href="mailto:${sanitizeEmail(company.contact_email) ? 'mailto:' + sanitizeEmail(company.contact_email) : '#'}" aria-label="邮件: ${escapeHtml(company.contact_email || 'N/A')}">${escapeHtml(company.contact_email || 'N/A')}</a>
 
             <label>🔗 LinkedIn:</label>
-            <a href="${sanitizeUrl(company.linkedin_url)}" target="_blank">${escapeHtml(company.linkedin_url || 'N/A')}</a>
+            <a href="${sanitizeUrl(company.linkedin_url)}" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn: ${escapeHtml(company.linkedin_url || 'N/A')}">${escapeHtml(company.linkedin_url || 'N/A')}</a>
 
             <label>🌐 Website:</label>
-            <a href="${sanitizeUrl(company.website)}" target="_blank">${escapeHtml(company.website || 'N/A')}</a>
+            <a href="${sanitizeUrl(company.website)}" target="_blank" rel="noopener noreferrer" aria-label="网站: ${escapeHtml(company.website || 'N/A')}">${escapeHtml(company.website || 'N/A')}</a>
 
             <label>💼 联系职位:</label>
             <span>${escapeHtml(company.best_contact_title || 'N/A')}</span>
         </div>
 
         <div class="card-actions">
-            <button class="action-btn" data-email="${escapeHtml(company.contact_email || '')}" onclick="copyToClipboard(this.getAttribute('data-email'), this)">📋 复制邮箱</button>
-            <button class="action-btn" data-url="${sanitizeUrl(company.linkedin_url)}" onclick="openUrl(this.getAttribute('data-url'))">🔗 打开LinkedIn</button>
-            <button class="action-btn" data-url="${sanitizeUrl(company.website)}" onclick="openUrl(this.getAttribute('data-url'))">🌐 打开网站</button>
+            <button class="action-btn" data-email="${escapeHtml(company.contact_email || '')}" onclick="copyToClipboard(this.getAttribute('data-email'), this)" aria-label="复制邮箱: ${escapeHtml(company.contact_email || 'N/A')}">📋 复制邮箱</button>
+            <button class="action-btn" data-url="${sanitizeUrl(company.linkedin_url)}" onclick="openUrl(this.getAttribute('data-url'))" aria-label="打开 LinkedIn">🔗 打开LinkedIn</button>
+            <button class="action-btn" data-url="${sanitizeUrl(company.website)}" onclick="openUrl(this.getAttribute('data-url'))" aria-label="打开网站">🌐 打开网站</button>
         </div>
     `;
     return card;
@@ -245,9 +262,13 @@ function renderTableView() {
     const container = document.getElementById('results-container');
     container.innerHTML = '';
     container.className = 'results-container table-view';
+    container.setAttribute('role', 'region');
+    container.setAttribute('aria-label', `搜索结果表格，共 ${currentState.companies.length} 家公司`);
 
     const table = document.createElement('table');
     table.className = 'companies-table';
+    table.setAttribute('role', 'table');
+    table.setAttribute('aria-label', '公司搜索结果');
 
     // Header
     const thead = document.createElement('thead');

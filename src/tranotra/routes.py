@@ -3,6 +3,7 @@
 import logging
 import time
 import json
+import os
 import threading
 from typing import Tuple, Dict, Optional
 from functools import lru_cache
@@ -76,8 +77,10 @@ class SearchResultsCache:
             self.cache.clear()
 
 
-# Global cache instance
-results_cache = SearchResultsCache()
+# Global cache instance with configurable TTL and size
+CACHE_TTL = int(os.environ.get('CACHE_TTL', 300))  # 5 minutes default
+CACHE_MAX_SIZE = int(os.environ.get('CACHE_MAX_SIZE', 50))
+results_cache = SearchResultsCache(max_size=CACHE_MAX_SIZE, ttl=CACHE_TTL)
 
 
 def detect_response_format(response: str) -> str:
