@@ -3,9 +3,10 @@ story_id: "1.3"
 story_key: "1-3-gemini-api-integration"
 epic: "Epic 1: 搜索表单与数据获取 (Search & Acquisition)"
 title: "集成 Gemini API 与环境变量管理"
-status: "ready-for-dev"
+status: "done"
 priority: "P0"
 created_date: "2026-04-03"
+completed_date: "2026-04-03"
 assignee: "Ailong"
 ---
 
@@ -356,12 +357,12 @@ class GeminiRateLimitError(GeminiError): pass
 
 #### Patch Items (6)
 
-- [ ] [Review][Patch] [CRITICAL] 全局状态管理缺陷 - 使用新实例而不是全局 _gemini_client [src/tranotra/gemini_client.py:138]
-- [ ] [Review][Patch] [CRITICAL] 超时保证未实现 - timeout 参数未被使用，AC2 失效 [src/tranotra/gemini_client.py:105-145]
-- [ ] [Review][Patch] [HIGH] 线程安全缺失 - 全局 _gemini_client 在多线程环境下不安全 [src/tranotra/gemini_client.py:28]
-- [ ] [Review][Patch] [MEDIUM] Asyncio 导入误用 - 导入但未使用，except 块死代码 [src/tranotra/gemini_client.py:133-145]
-- [ ] [Review][Patch] [MEDIUM] Retry 数组越界风险 - max_retries > 3 时 IndexError [src/tranotra/gemini_client.py:125]
-- [ ] [Review][Patch] [LOW] API 密钥最小长度验证缺失 - 允许单字符密钥 [src/tranotra/gemini_client.py:58]
+- [x] [Review][Patch] [CRITICAL] 全局状态管理缺陷 - 使用新实例而不是全局 _gemini_client [src/tranotra/gemini_client.py:158]
+- [x] [Review][Patch] [CRITICAL] 超时保证未实现 - timeout 参数未被使用，AC2 失效 [src/tranotra/gemini_client.py:143-150]
+- [x] [Review][Patch] [HIGH] 线程安全缺失 - 全局 _gemini_client 在多线程环境下不安全 [src/tranotra/gemini_client.py:26-28]
+- [x] [Review][Patch] [MEDIUM] Asyncio 导入误用 - 导入但未使用，except 块死代码 [removed]
+- [x] [Review][Patch] [MEDIUM] Retry 数组越界风险 - max_retries > 3 时 IndexError [src/tranotra/gemini_client.py:135, 172, 186]
+- [x] [Review][Patch] [LOW] API 密钥最小长度验证缺失 - 允许单字符密钥 [src/tranotra/gemini_client.py:60]
 
 #### Deferred Items (2)
 
@@ -371,10 +372,23 @@ class GeminiRateLimitError(GeminiError): pass
 ---
 
 ### Completion Notes
-✅ **Story 1-3 Implementation Complete (With Review Findings)**
+✅ **Story 1-3 Implementation Complete (All Patches Applied)**
 
 **Summary:**
-Gemini API integration successfully implemented with complete client wrapper, error handling, and comprehensive test suite.
+Gemini API integration successfully implemented with complete client wrapper, error handling, and comprehensive test suite. All 6 code review patches have been applied and verified.
+
+**Code Review Patches Applied:**
+1. ✅ **CRITICAL: Global Client Management** — Fixed line 158 to use singleton `_gemini_client` instead of creating new GenerativeModel instances per call
+2. ✅ **CRITICAL: Timeout Implementation** — Added elapsed time tracking from start_time and explicit timeout check (lines 143-150)
+3. ✅ **HIGH: Thread Safety** — Added `threading.Lock()` (line 26-28) to protect global `_gemini_client` in Flask multi-threaded environment
+4. ✅ **MEDIUM: Dead Code Removal** — Removed unused asyncio import and except asyncio.TimeoutError handler
+5. ✅ **MEDIUM: Retry Array Safety** — Extended backoff_times to 4 values [2,4,8,16] and added bounds checking with min(retry_count-1, len(backoff_times)-1)
+6. ✅ **LOW: API Key Validation** — Strengthened validation to check `len(api_key.strip()) < 20` instead of truthiness
+
+**Test Suite Fix:**
+- Fixed test mocking strategy to properly mock global `_gemini_client` using pytest fixture
+- Updated all test API keys to 40-character minimum format
+- All 15 Gemini tests now pass (previously 1 integration test was failing due to mocking issue)
 
 **Deliverables:**
 1. **Custom Exception Hierarchy** — `core/exceptions.py`
