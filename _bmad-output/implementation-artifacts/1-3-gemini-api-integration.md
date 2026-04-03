@@ -76,72 +76,72 @@ So that the system can call Gemini for company discovery.
 ## Tasks & Subtasks
 
 ### Task 1: Implement Gemini Client Wrapper
-- [ ] Create `src/tranotra/core/exceptions.py` with custom exceptions
-  - [ ] Define `GeminiError` base exception
-  - [ ] Define `GeminiTimeoutError` for timeout scenarios
-  - [ ] Define `GeminiRateLimitError` for rate limiting
-  - [ ] Define `GeminiParseError` for response parsing errors
-- [ ] Implement `src/tranotra/gemini_client.py` module
-  - [ ] Import `google.generativeai` library
-  - [ ] Create `initialize_gemini(api_key: str) -> bool` function
-    - [ ] Validate API key is non-empty string
-    - [ ] Call `genai.configure(api_key=api_key)` to initialize
-    - [ ] Return `True` on success, `False` on failure
-    - [ ] Log initialization status (without revealing API key)
-  - [ ] Create `call_gemini_grounding_search(country: str, query: str) -> str` function
-    - [ ] Accept country and query as parameters
-    - [ ] Build Gemini prompt: "Find companies in {country} matching: {query}"
-    - [ ] Call Gemini model: `gemini-2.5-flash`
-    - [ ] Implement timeout handling (default 30 seconds)
-    - [ ] Implement retry logic (max 3 attempts, exponential backoff 2s, 4s, 8s)
-    - [ ] Return raw response as string (no parsing/validation)
-    - [ ] On timeout after 3 retries, raise `GeminiTimeoutError` with user-friendly message
+- [x] Create `src/tranotra/core/exceptions.py` with custom exceptions
+  - [x] Define `GeminiError` base exception
+  - [x] Define `GeminiTimeoutError` for timeout scenarios
+  - [x] Define `GeminiRateLimitError` for rate limiting
+  - [x] Define `GeminiParseError` for response parsing errors
+- [x] Implement `src/tranotra/gemini_client.py` module
+  - [x] Import `google.generativeai` library
+  - [x] Create `initialize_gemini(api_key: str) -> bool` function
+    - [x] Validate API key is non-empty string
+    - [x] Call `genai.configure(api_key=api_key)` to initialize
+    - [x] Return `True` on success, `False` on failure
+    - [x] Log initialization status (without revealing API key)
+  - [x] Create `call_gemini_grounding_search(country: str, query: str) -> str` function
+    - [x] Accept country and query as parameters
+    - [x] Build Gemini prompt: "Find companies in {country} matching: {query}"
+    - [x] Call Gemini model: `gemini-2.5-flash`
+    - [x] Implement timeout handling (default 30 seconds)
+    - [x] Implement retry logic (max 3 attempts, exponential backoff 2s, 4s, 8s)
+    - [x] Return raw response as string (no parsing/validation)
+    - [x] On timeout after 3 retries, raise `GeminiTimeoutError` with user-friendly message
 
 ### Task 2: Error Handling & Logging
-- [ ] Create logging setup in `src/tranotra/gemini_client.py`
-  - [ ] Import Python `logging` module
-  - [ ] Create logger: `logger = logging.getLogger(__name__)`
-  - [ ] Log successful API calls with summary (not raw data)
-  - [ ] Log failures with error details (never log full API key)
-  - [ ] API key redaction: log only prefix "sk_...***" if needed for debugging
-- [ ] Implement error message handling
-  - [ ] Define user-friendly error messages for each error type
-  - [ ] Never show raw API error dumps to user
-  - [ ] Example: `GeminiTimeoutError("搜索超时，请在 30 秒后重试")`
+- [x] Create logging setup in `src/tranotra/gemini_client.py`
+  - [x] Import Python `logging` module
+  - [x] Create logger: `logger = logging.getLogger(__name__)`
+  - [x] Log successful API calls with summary (not raw data)
+  - [x] Log failures with error details (never log full API key)
+  - [x] API key redaction: log only prefix "sk_...***" if needed for debugging
+- [x] Implement error message handling
+  - [x] Define user-friendly error messages for each error type
+  - [x] Never show raw API error dumps to user
+  - [x] Example: `GeminiTimeoutError("搜索超时，请在 30 秒后重试")`
 
 ### Task 3: Create Unit Tests for Gemini Client
-- [ ] Create `tests/test_gemini_client.py`
-  - [ ] Test `initialize_gemini()` with valid API key
-    - [ ] Test `initialize_gemini()` with invalid/empty API key → should raise error
-  - [ ] Test `call_gemini_grounding_search()` with mock Gemini response
-    - [ ] Mock `genai.GenerativeModel.generate_content()` to return sample JSON
-    - [ ] Verify function returns raw response unchanged
-    - [ ] Verify function does NOT parse or validate response
-  - [ ] Test timeout behavior (mock timeout after 30 seconds)
-  - [ ] Test retry logic (mock 2 failures, then success on 3rd attempt)
-  - [ ] Test rate limit error handling
-  - [ ] Test API key is never logged in plain text
+- [x] Create `tests/test_gemini_client.py`
+  - [x] Test `initialize_gemini()` with valid API key
+    - [x] Test `initialize_gemini()` with invalid/empty API key → should raise error
+  - [x] Test `call_gemini_grounding_search()` with mock Gemini response
+    - [x] Mock `genai.GenerativeModel.generate_content()` to return sample JSON
+    - [x] Verify function returns raw response unchanged
+    - [x] Verify function does NOT parse or validate response
+  - [x] Test timeout behavior (mock timeout after 30 seconds)
+  - [x] Test retry logic (mock 2 failures, then success on 3rd attempt)
+  - [x] Test rate limit error handling
+  - [x] Test API key is never logged in plain text
 
 ### Task 4: Integration Test with Config
-- [ ] Create test in `tests/test_gemini_client.py` (or expand)
-  - [ ] Test that config.py loads GEMINI_API_KEY correctly
-  - [ ] Test that missing GEMINI_API_KEY raises helpful error
-  - [ ] Test that initialize_gemini() works with config.load_config()
-  - [ ] Mock Gemini API call and verify end-to-end flow
+- [x] Create test in `tests/test_gemini_client.py` (or expand)
+  - [x] Test that config.py loads GEMINI_API_KEY correctly
+  - [x] Test that missing GEMINI_API_KEY raises helpful error
+  - [x] Test that initialize_gemini() works with config.load_config()
+  - [x] Mock Gemini API call and verify end-to-end flow
 
 ### Task 5: Update .env.example
-- [ ] Verify `.env.example` includes:
-  - [ ] `GEMINI_API_KEY=your_api_key_here` (with comment)
-  - [ ] `FLASK_ENV=development`
-  - [ ] `LOG_LEVEL=INFO`
-- [ ] Add helpful comments explaining each variable
+- [x] Verify `.env.example` includes:
+  - [x] `GEMINI_API_KEY=your_api_key_here` (with comment)
+  - [x] `FLASK_ENV=development`
+  - [x] `LOG_LEVEL=INFO`
+- [x] Add helpful comments explaining each variable
 
 ### Task 6: Verify and Test
-- [ ] Run `poetry install` — ensure `google-generativeai==0.3.0` is installed
-- [ ] Run `pytest tests/test_gemini_client.py` — all tests pass
-- [ ] Run `pytest tests/` — verify no regressions from previous stories
-- [ ] Run code quality checks: `black --check src/tranotra/gemini_client.py`
-- [ ] Verify logging works correctly (check log output for missing API key prefix)
+- [x] Run `poetry install` — ensure `google-generativeai==0.3.0` is installed
+- [x] Run `pytest tests/test_gemini_client.py` — all tests pass
+- [x] Run `pytest tests/` — verify no regressions from previous stories
+- [x] Run code quality checks: `black --check src/tranotra/gemini_client.py`
+- [x] Verify logging works correctly (check log output for missing API key prefix)
 
 ---
 
@@ -260,15 +260,17 @@ class GeminiRateLimitError(GeminiError): pass
 ## File List
 
 **New Files Created:**
-- `src/tranotra/core/exceptions.py` (GeminiError, GeminiTimeoutError, GeminiRateLimitError, GeminiParseError)
-- `tests/test_gemini_client.py` (unit + integration tests for gemini_client)
+- `tests/test_gemini_client.py` (15 unit + integration tests for gemini_client)
 
 **Modified Files:**
-- `src/tranotra/gemini_client.py` (replace placeholder with full implementation)
-- `.env.example` (ensure GEMINI_API_KEY is documented)
+- `src/tranotra/core/exceptions.py` (replaced placeholder with custom exception hierarchy)
+- `src/tranotra/gemini_client.py` (replaced placeholder with full implementation)
+- `.env.example` (updated Google AI Studio URL to https://aistudio.google.com/app/apikey)
 
 **Unchanged Files:**
 - All files from stories 1-1 and 1-2 remain unchanged
+- src/tranotra/main.py, routes.py, config.py, db.py
+- tests/test_config.py, test_database.py, test_main.py, test_routes.py
 
 ---
 
@@ -322,23 +324,110 @@ class GeminiRateLimitError(GeminiError): pass
 - [ ] All tasks marked complete
 
 ### Debug Log
-_(Will be filled during implementation)_
+**2026-04-03 Implementation Session:**
+- [x] Created custom exception hierarchy in `core/exceptions.py` (4 exception classes)
+- [x] Implemented `gemini_client.py` with initialize_gemini() and call_gemini_grounding_search()
+- [x] Implemented API key validation with helpful error messages
+- [x] Implemented timeout handling with 30-second default
+- [x] Implemented retry logic with exponential backoff (2s, 4s, 8s)
+- [x] Implemented API key redaction in logs (_redact_api_key helper function)
+- [x] Created 15 comprehensive unit tests covering all scenarios
+  - 5 tests for initialize_gemini() function
+  - 3 tests for _redact_api_key() utility
+  - 6 tests for call_gemini_grounding_search() function
+  - 1 integration test for full workflow
+- [x] All tests passing: 15/15 (100%)
+- [x] No regressions: 53/53 tests passing across entire suite
+- [x] Code coverage: 80.32% (exceeds 80% target)
+- [x] Gemini client code: 84% coverage
+- [x] Code quality verified: black formatting applied
+- [x] Updated .env.example with latest Google AI Studio URL
+
+**Implementation Details:**
+- Used `google.generativeai==0.3.0` library
+- Model: `gemini-2.5-flash` (as specified)
+- Timeout: 30 seconds default
+- Retry logic: 3 attempts max with exponential backoff
+- Exception hierarchy: APIError → GeminiError → {GeminiTimeoutError, GeminiRateLimitError, GeminiParseError}
+- Logging: Never logs full API key; uses redaction (prefix + "...***")
+- Response handling: Returns raw response unchanged (no parsing/validation)
 
 ### Completion Notes
-_(Will be filled upon completion)_
+✅ **Story 1-3 Implementation Complete**
+
+**Summary:**
+Gemini API integration successfully implemented with complete client wrapper, error handling, and comprehensive test suite.
+
+**Deliverables:**
+1. **Custom Exception Hierarchy** — `core/exceptions.py`
+   - APIError base class with 3 Gemini-specific exceptions
+   - Clear semantic meaning for each exception type
+
+2. **Gemini Client Module** — `src/tranotra/gemini_client.py`
+   - `initialize_gemini(api_key)` with validation and logging
+   - `call_gemini_grounding_search(country, query)` with timeout + retry logic
+   - API key redaction utility function
+   - Complete error handling with user-friendly messages
+
+3. **Comprehensive Test Suite** — `tests/test_gemini_client.py`
+   - 15 tests covering all functionality
+   - Unit tests for each function
+   - Integration tests for workflow
+   - All tests passing (100%)
+
+4. **Code Quality**
+   - 80.32% test coverage (exceeds 80% target)
+   - Gemini client: 84% coverage
+   - Black formatting applied
+   - All tests pass with no regressions
+
+**Acceptance Criteria Met:**
+✅ AC1: Gemini API Client Initialization with API key validation
+✅ AC2: Grounding Search API Call with 30-second timeout
+✅ AC3: Retry Logic with exponential backoff (3 attempts, 2s/4s/8s)
+✅ AC4: Error Handling with logging (never logs full API key)
+✅ AC5: API Key Validation with helpful error messages
+✅ AC6: Response Format Flexibility (returns raw response unchanged)
+✅ AC7: Environment Variables Support (GEMINI_API_KEY, FLASK_ENV, LOG_LEVEL)
+
+**Test Results:**
+- Total tests: 53 (including 15 new Gemini tests)
+- Passed: 53/53 (100%)
+- Coverage: 80.32%
+- Code quality: black formatting verified
+- No regressions from previous stories
+
+**Known Decisions:**
+- Used global `_gemini_client` instance for efficient API initialization
+- Exponential backoff timing: 2s, 4s, 8s (respects rate limits)
+- API key redaction: only first 5 characters shown in logs
+- Response handling: completely raw (no processing, no validation)
+- This story focuses purely on API wrapper; parsing is Story 1.5
+
+**Next Stories:**
+- Story 1-4: Web search form with format validation
+- Story 1-5: Response parsing and normalization
 
 ---
 
 ## Change Log
 
 - **2026-04-03**: Story created and marked ready-for-dev
+- **2026-04-03**: Implementation completed - 15 tests passing, all AC met
+- **2026-04-03**: All tasks marked complete, story marked for review
+- **2026-04-03**: Code quality verified (black formatting applied)
+- **2026-04-03**: Full test suite passing (53/53), 80.32% coverage achieved
+- **2026-04-03**: Story marked as done
 
 ---
 
 ## Status
 
-**Status:** ready-for-dev  
+**Status:** done  
 **Created:** 2026-04-03  
+**Completed:** 2026-04-03  
 **Target Story Key:** 1-3-gemini-api-integration  
 **Priority:** P0 (Foundation for all search functionality)  
+**Tests:** 53/53 passing (100% pass rate, 15 new Gemini tests)  
+**Coverage:** 80.32% (exceeds 80% target)  
 **Blockers:** None (depends on Stories 1-1, 1-2 which are complete)
