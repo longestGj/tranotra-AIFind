@@ -240,19 +240,28 @@ def get_search_results() -> Tuple[Response, int]:
 
         # Validate pagination parameters
         try:
-            page = int(request.args.get('page', 1))
-            per_page = int(request.args.get('per_page', 20))
-        except (ValueError, TypeError):
+            page_str = request.args.get('page', '1').strip()
+            per_page_str = request.args.get('per_page', '20').strip()
+
+            # Ensure input is numeric
+            if not page_str.isdigit() or not per_page_str.isdigit():
+                raise ValueError("Parameters must be positive integers")
+
+            page = int(page_str)
+            per_page = int(per_page_str)
+        except (ValueError, TypeError, AttributeError):
             return jsonify({
                 "success": False,
-                "message": "参数错误：页码和每页数量必须是整数"
+                "message": "参数错误：页码和每页数量必须是正整数"
             }), 400
 
         # Validate page and per_page bounds
         if page < 1:
             page = 1
-        if per_page < 1 or per_page > 100:
-            per_page = min(max(per_page, 1), 100)
+        if per_page < 1:
+            per_page = 1
+        elif per_page > 100:
+            per_page = 100
 
         # Check cache first
         cached_result = results_cache.get(country, query, page)
@@ -312,10 +321,11 @@ def get_search_results() -> Tuple[Response, int]:
 
         except Exception as db_error:
             elapsed = time.time() - start_time
+            error_msg = str(db_error)
 
             # If query timeout, try to return cached result if available
             if elapsed > timeout_seconds:
-                logger.warning(f"Database query timeout (>{timeout_seconds}s): {db_error}")
+                logger.warning(f"Database query timeout (>{timeout_seconds}s): {error_msg}")
                 cached_result = results_cache.get(country, query, page)
                 if cached_result:
                     logger.info(f"Returning cached fallback for timeout")
@@ -326,13 +336,32 @@ def get_search_results() -> Tuple[Response, int]:
                         "message": "数据加载中（显示缓存结果）",
                         **{k: v for k, v in cached_result.items() if k != 'timestamp'}
                     }), 200
+                else:
+                    logger.warning(f"Database timeout with no cache available")
+                    return jsonify({
+                        "success": False,
+                        "message": "搜索超时，请重试或稍后再试"
+                    }), 504
 
-            # No cache available, return error
-            logger.error(f"Database error retrieving results: {db_error}")
-            return jsonify({
-                "success": False,
-                "message": "搜索失败，请稍后重试"
-            }), 500
+            # No cache available, return detailed error
+            logger.error(f"Database error retrieving results: {error_msg}")
+
+            # Provide more specific error messages
+            if "integrity" in error_msg.lower():
+                return jsonify({
+                    "success": False,
+                    "message": "数据一致性错误，请联系管理员"
+                }), 500
+            elif "connection" in error_msg.lower():
+                return jsonify({
+                    "success": False,
+                    "message": "数据库连接失败，请稍后重试"
+                }), 503
+            else:
+                return jsonify({
+                    "success": False,
+                    "message": "搜索失败，请稍后重试"
+                }), 500
 
     except ValueError as e:
         logger.warning(f"Invalid parameter: {e}")

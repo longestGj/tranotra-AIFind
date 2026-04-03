@@ -31,11 +31,18 @@ window.addEventListener('DOMContentLoaded', () => {
     // Update title
     updateTitle();
 
-    // Set active view button
+    // Set active view button and render with saved preference
     document.querySelectorAll('.view-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`.view-btn[data-view="${currentState.view}"]`).classList.add('active');
+    const activeBtn = document.querySelector(`.view-btn[data-view="${currentState.view}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    } else {
+        // Fallback if saved view is invalid
+        currentState.view = 'card';
+        document.querySelector(`.view-btn[data-view="card"]`).classList.add('active');
+    }
 
     // Fetch results
     fetchResults();
@@ -175,8 +182,8 @@ function createCompanyCard(company) {
             Score: ${company.prospect_score || 'N/A'}/10
         </div>
 
-        <div class="priority-badge priority-${(company.priority || 'LOW').toLowerCase()}">
-            ${company.priority || 'N/A'}
+        <div class="priority-badge priority-${sanitizeCssClass(company.priority || 'LOW')}">
+            ${escapeHtml(company.priority || 'N/A')}
         </div>
 
         <div class="card-details">
@@ -268,7 +275,7 @@ function renderTableView() {
             <td title="${escapeHtml(company.name)}">${escapeHtml(company.name)}</td>
             <td>${escapeHtml(company.country || 'N/A')}</td>
             <td>${company.prospect_score || 'N/A'}</td>
-            <td><span class="priority-badge priority-${(company.priority || 'LOW').toLowerCase()}">${company.priority || 'N/A'}</span></td>
+            <td><span class="priority-badge priority-${sanitizeCssClass(company.priority || 'LOW')}">${escapeHtml(company.priority || 'N/A')}</span></td>
             <td><a href="${sanitizeEmail(company.contact_email) ? 'mailto:' + sanitizeEmail(company.contact_email) : '#'}">${escapeHtml(company.contact_email || 'N/A')}</a></td>
             <td><a href="${sanitizeUrl(company.linkedin_url)}" target="_blank">LinkedIn</a></td>
             <td><a href="${sanitizeUrl(company.website)}" target="_blank">Website</a></td>
@@ -325,6 +332,15 @@ function sanitizeEmail(email) {
         return encodeURIComponent(email);
     }
     return '';
+}
+
+/**
+ * Sanitize CSS class name
+ */
+function sanitizeCssClass(value) {
+    if (!value || typeof value !== 'string') return 'low';
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    return sanitized || 'low';
 }
 
 /**
