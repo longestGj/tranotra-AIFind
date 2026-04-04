@@ -48,6 +48,15 @@ window.addEventListener('DOMContentLoaded', () => {
         document.querySelector(`.view-btn[data-view="card"]`).classList.add('active');
     }
 
+    // Initialize keyboard navigation
+    setupViewToggleKeyboard();
+
+    // Mobile default: use card view if screen width < 768px
+    if (window.innerWidth < 768 && currentState.view !== 'card') {
+        // Don't force card view, but log a note
+        console.info('Mobile device detected - card view recommended');
+    }
+
     // Fetch results
     fetchResults();
 });
@@ -657,9 +666,90 @@ function openUrl(url) {
 }
 
 /**
+ * Save card view state (scroll position)
+ */
+function saveCardViewState() {
+    try {
+        const scrollPos = document.documentElement.scrollTop || document.body.scrollTop;
+        localStorage.setItem('tranotra_leads_card_scroll', scrollPos.toString());
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            console.warn('localStorage quota exceeded, scroll position not saved');
+        }
+    }
+}
+
+/**
+ * Restore card view state (scroll position)
+ */
+function restoreCardViewState() {
+    try {
+        const savedScroll = localStorage.getItem('tranotra_leads_card_scroll');
+        if (savedScroll) {
+            const scrollPos = parseInt(savedScroll, 10);
+            if (!isNaN(scrollPos) && scrollPos >= 0) {
+                // Use setTimeout to ensure DOM is fully rendered
+                setTimeout(() => {
+                    window.scrollTo(0, scrollPos);
+                }, 50);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to restore card scroll position:', e);
+    }
+}
+
+/**
+ * Save table view state (sort, direction, page)
+ */
+function saveTableViewState() {
+    try {
+        const tableState = {
+            view: 'table',
+            sortColumn: currentState.sortColumn || 'prospect_score',
+            sortDir: currentState.sortDirection || 'desc',
+            page: currentState.page || 1
+        };
+        localStorage.setItem('tranotra_leads_table_state', JSON.stringify(tableState));
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            console.warn('localStorage quota exceeded, table state not saved');
+        }
+    }
+}
+
+/**
+ * Restore table view state (sort, direction, page)
+ */
+function restoreTableViewState() {
+    try {
+        const saved = localStorage.getItem('tranotra_leads_table_state');
+        if (saved) {
+            const state = JSON.parse(saved);
+            if (state && typeof state === 'object') {
+                currentState.sortColumn = state.sortColumn || 'prospect_score';
+                currentState.sortDirection = state.sortDir || 'desc';
+                currentState.page = state.page || 1;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to restore table state:', e);
+    }
+}
+
+/**
  * Switch view between card and table
  */
 function switchView(view) {
+    const container = document.getElementById('results-container');
+
+    // Save state before switching away
+    if (currentState.view === 'card') {
+        saveCardViewState();
+    } else if (currentState.view === 'table') {
+        saveTableViewState();
+    }
+
     currentState.view = view;
 
     try {
@@ -679,13 +769,45 @@ function switchView(view) {
     // Reset sort preference loading flag when switching to table view
     if (view === 'table') {
         currentState._sortPrefLoaded = false;
+        // Restore table state before rendering
+        restoreTableViewState();
     }
 
-    // Re-render
-    if (view === 'card') {
-        renderCardView();
+    // Add fade animation
+    if (container) {
+        container.classList.add('view-fade-out');
+
+        setTimeout(() => {
+            // Re-render
+            if (view === 'card') {
+                renderCardView();
+                restoreCardViewState();
+            } else {
+                renderTableView();
+            }
+
+            // Remove fade-out and add fade-in
+            const newContainer = document.getElementById('results-container');
+            if (newContainer) {
+                newContainer.classList.remove('view-fade-out');
+                newContainer.classList.add('view-fade-in');
+
+                // Re-initialize keyboard navigation for view buttons
+                setupViewToggleKeyboard();
+
+                setTimeout(() => {
+                    newContainer.classList.remove('view-fade-in');
+                }, 300);
+            }
+        }, 150);
     } else {
-        renderTableView();
+        // Fallback if container not found
+        if (view === 'card') {
+            renderCardView();
+            restoreCardViewState();
+        } else {
+            renderTableView();
+        }
     }
 }
 
@@ -940,3 +1062,77 @@ function openNoteModal(companyId) {
     };
     document.addEventListener('keydown', escapeHandler);
 }
+
+/**
+ * Setup keyboard navigation for view toggle buttons
+ */
+function setupViewToggleKeyboard() {
+    const viewBtns = document.querySelectorAll('.view-btn');
+
+    viewBtns.forEach((btn, index) => {
+        btn.addEventListener('keydown', (e) => {
+            // Allow Enter and Space to activate the button
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                btn.click();
+            }
+            // Allow arrow keys to navigate between buttons
+            if (e.key === 'ArrowRight' && index < viewBtns.length - 1) {
+                e.preventDefault();
+                viewBtns[index + 1].focus();
+            }
+            if (e.key === 'ArrowLeft' && index > 0) {
+                e.preventDefault();
+                viewBtns[index - 1].focus();
+            }
+        });
+    });
+}
+
+/**
+ * Global keyboard navigation handler for card/table views
+ */
+document.addEventListener('keydown', (e) => {
+    const container = document.getElementById('results-container');
+    if (!container || !currentState.companies.length) return;
+
+    if (currentState.view === 'card') {
+        // Arrow down: scroll to next card
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const cardHeight = 200; // Approximate height
+            window.scrollBy(0, cardHeight);
+        }
+        // Arrow up: scroll to previous card
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const cardHeight = 200;
+            window.scrollBy(0, -cardHeight);
+        }
+    } else if (currentState.view === 'table') {
+        const rows = container.querySelectorAll('.data-row');
+        if (!rows.length) return;
+
+        // Find currently selected or focused row
+        let currentRowIndex = Array.from(rows).findIndex(row =>
+            row.classList.contains('selected') || document.activeElement === row
+        );
+
+        if (currentRowIndex === -1) currentRowIndex = 0;
+
+        // Arrow down: move to next row
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextIndex = Math.min(currentRowIndex + 1, rows.length - 1);
+            rows[nextIndex].focus();
+            rows[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        // Arrow up: move to previous row
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevIndex = Math.max(currentRowIndex - 1, 0);
+            rows[prevIndex].focus();
+            rows[prevIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+});
