@@ -102,6 +102,15 @@ def get_dashboard() -> Tuple[Dict, int]:
         logger.info(f"Calculating dashboard metrics for {days} days")
         metrics = get_dashboard_metrics(days)
 
+        # Check if metrics calculation failed
+        if not metrics:
+            logger.warning(f"Failed to calculate metrics for {days} days")
+            return _error_response(
+                "CALCULATION_ERROR",
+                "Unable to calculate dashboard metrics",
+                500
+            )
+
         # Build response
         period_map = {7: "last_7_days", 14: "last_14_days", 30: "last_30_days"}
 

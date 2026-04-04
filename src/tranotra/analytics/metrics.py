@@ -4,7 +4,7 @@ Provides functions to calculate key performance metrics from search history data
 All functions operate on search_history and company tables using SQLAlchemy ORM.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 import logging
 
@@ -31,27 +31,30 @@ def _get_date_range(days: int) -> tuple:
 
 
 def _get_yesterday_range() -> tuple:
-    """Get date range for yesterday.
+    """Get date range for yesterday (UTC).
 
     Returns:
-        Tuple of (yesterday_start, yesterday_end)
+        Tuple of (yesterday_start, yesterday_end) in UTC
     """
     today = datetime.utcnow().date()
     yesterday = today - timedelta(days=1)
 
-    yesterday_start = datetime.combine(yesterday, datetime.min.time())
-    yesterday_end = datetime.combine(today, datetime.min.time())
+    # Use UTC timezone to match database timestamps
+    yesterday_start = datetime.combine(yesterday, datetime.min.time(), tzinfo=timezone.utc)
+    yesterday_end = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc)
 
     return yesterday_start, yesterday_end
 
 
 def _get_last_week_range() -> tuple:
-    """Get date range for last week (7 days ago).
+    """Get date range for last week (7-14 days ago, UTC).
 
     Returns:
-        Tuple of (last_week_start, last_week_end)
+        Tuple of (last_week_start, last_week_end) in UTC
     """
     today = datetime.utcnow()
+    # Round to midnight UTC for consistent week boundaries
+    today = today.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
     last_week_end = today - timedelta(days=7)
     last_week_start = last_week_end - timedelta(days=7)
 
@@ -114,7 +117,7 @@ def calculate_total_companies(days: int) -> int:
 def calculate_dedup_rate(days: int) -> float:
     """Calculate deduplication rate as percentage.
 
-    Formula: (SUM(duplicate_count) / total_companies) * 100
+    Formula: (SUM(duplicate_count) / COUNT(DISTINCT company.id)) * 100
 
     Args:
         days: Number of days to look back
@@ -126,14 +129,20 @@ def calculate_dedup_rate(days: int) -> float:
     db = get_db()
 
     try:
-        total_companies = calculate_total_companies(days)
-        if total_companies == 0:
-            return 0.0
-
-        total_duplicates = db.query(func.sum(SearchHistory.duplicate_count)).filter(
+        # Single aggregated query: count distinct companies and sum duplicates
+        result = db.query(
+            func.count(func.distinct(Company.id)).label('total_companies'),
+            func.sum(SearchHistory.duplicate_count).label('total_duplicates')
+        ).join(SearchHistory).filter(
             SearchHistory.created_at >= start_date,
             SearchHistory.created_at < end_date
-        ).scalar() or 0
+        ).first()
+
+        total_companies = result.total_companies or 0
+        total_duplicates = result.total_duplicates or 0
+
+        if total_companies == 0:
+            return 0.0
 
         rate = (total_duplicates / total_companies) * 100
         logger.debug(f"Dedup rate for {days} days: {rate:.1f}%")

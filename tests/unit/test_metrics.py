@@ -66,17 +66,21 @@ class TestMetricsCalculations:
 
         assert result == 312
 
-    @patch("tranotra.analytics.metrics.calculate_total_companies")
     @patch("tranotra.analytics.metrics.get_db")
-    def test_calculate_dedup_rate_with_data(self, mock_get_db, mock_total_companies):
+    def test_calculate_dedup_rate_with_data(self, mock_get_db):
         """Test calculating dedup rate when data exists"""
-        mock_total_companies.return_value = 100
-
         mock_db = MagicMock()
         mock_query = MagicMock()
+
+        # Mock the result object with attributes
+        mock_result = MagicMock()
+        mock_result.total_companies = 100
+        mock_result.total_duplicates = 18
+
         mock_db.query.return_value = mock_query
+        mock_query.join.return_value = mock_query
         mock_query.filter.return_value = mock_query
-        mock_query.scalar.return_value = 18
+        mock_query.first.return_value = mock_result
 
         mock_get_db.return_value = mock_db
 
@@ -84,12 +88,23 @@ class TestMetricsCalculations:
 
         assert result == 18.0  # 18 / 100 * 100
 
-    @patch("tranotra.analytics.metrics.calculate_total_companies")
     @patch("tranotra.analytics.metrics.get_db")
-    def test_calculate_dedup_rate_no_companies(self, mock_get_db, mock_total_companies):
+    def test_calculate_dedup_rate_no_companies(self, mock_get_db):
         """Test calculating dedup rate when no companies exist"""
-        mock_total_companies.return_value = 0
-        mock_get_db.return_value = MagicMock()
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+
+        # Mock result with zero companies
+        mock_result = MagicMock()
+        mock_result.total_companies = 0
+        mock_result.total_duplicates = 0
+
+        mock_db.query.return_value = mock_query
+        mock_query.join.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.first.return_value = mock_result
+
+        mock_get_db.return_value = mock_db
 
         result = calculate_dedup_rate(7)
 

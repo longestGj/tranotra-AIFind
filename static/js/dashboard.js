@@ -132,10 +132,15 @@ function renderMetricCard(name, value, format, trend = null, hasData = true) {
  * Show loading spinner
  */
 function showLoading() {
-    document.getElementById('loading-spinner').classList.remove('d-none');
-    document.getElementById('error-alert').classList.add('d-none');
-    document.getElementById('no-data-message').classList.add('d-none');
-    document.getElementById('metrics-container').innerHTML = '';
+    const spinner = document.getElementById('loading-spinner');
+    const errorAlert = document.getElementById('error-alert');
+    const noDataMsg = document.getElementById('no-data-message');
+    const container = document.getElementById('metrics-container');
+
+    if (spinner) spinner.classList.remove('d-none');
+    if (errorAlert) errorAlert.classList.add('d-none');
+    if (noDataMsg) noDataMsg.classList.add('d-none');
+    if (container) container.innerHTML = '';
 }
 
 /**
@@ -143,31 +148,42 @@ function showLoading() {
  * @param {string} message - Error message to display
  */
 function showError(message) {
-    document.getElementById('loading-spinner').classList.add('d-none');
-    document.getElementById('error-alert').classList.remove('d-none');
-    document.getElementById('error-message').textContent = message;
-    document.getElementById('metrics-container').innerHTML = '';
+    const spinner = document.getElementById('loading-spinner');
+    const errorAlert = document.getElementById('error-alert');
+    const errorMsg = document.getElementById('error-message');
+    const container = document.getElementById('metrics-container');
+
+    if (spinner) spinner.classList.add('d-none');
+    if (errorAlert) errorAlert.classList.remove('d-none');
+    if (errorMsg) errorMsg.textContent = message || '发生错误';
+    if (container) container.innerHTML = '';
 }
 
 /**
  * Show no data message
  */
 function showNoData() {
-    document.getElementById('loading-spinner').classList.add('d-none');
-    document.getElementById('error-alert').classList.add('d-none');
-    document.getElementById('no-data-message').classList.remove('d-none');
+    const spinner = document.getElementById('loading-spinner');
+    const errorAlert = document.getElementById('error-alert');
+    const noDataMsg = document.getElementById('no-data-message');
+    const container = document.getElementById('metrics-container');
+
+    if (spinner) spinner.classList.add('d-none');
+    if (errorAlert) errorAlert.classList.add('d-none');
+    if (noDataMsg) noDataMsg.classList.remove('d-none');
 
     // Still render empty metric cards
-    const container = document.getElementById('metrics-container');
-    container.innerHTML = `
-        ${renderMetricCard('总搜索次数 (Total Searches)', 0, 'number', null, false)}
-        ${renderMetricCard('新增公司总数 (Total Companies)', 0, 'number', null, false)}
-        ${renderMetricCard('去重率 (Dedup Rate)', 0, 'percentage', null, false)}
-        ${renderMetricCard('平均命中率 (Avg Hit Rate)', 0, 'decimal', null, false)}
-        ${renderMetricCard('高分占比 (High-Score Rate)', 0, 'percentage', null, false)}
-        ${renderMetricCard('日对日增长 (Day-on-Day)', 0, 'percentage', null, false)}
-        ${renderMetricCard('周对周增长 (Week-on-Week)', 0, 'percentage', null, false)}
-    `;
+    if (container) {
+        container.innerHTML = `
+            ${renderMetricCard('总搜索次数 (Total Searches)', 0, 'number', null, false)}
+            ${renderMetricCard('新增公司总数 (Total Companies)', 0, 'number', null, false)}
+            ${renderMetricCard('去重率 (Dedup Rate)', 0, 'percentage', null, false)}
+            ${renderMetricCard('平均命中率 (Avg Hit Rate)', 0, 'decimal', null, false)}
+            ${renderMetricCard('高分占比 (High-Score Rate)', 0, 'percentage', null, false)}
+            ${renderMetricCard('日对日增长 (Day-on-Day)', 0, 'percentage', null, false)}
+            ${renderMetricCard('周对周增长 (Week-on-Week)', 0, 'percentage', null, false)}
+        `;
+    }
 }
 
 /**
@@ -175,8 +191,28 @@ function showNoData() {
  * @param {object} metrics - Metrics object from API
  */
 function renderMetrics(metrics) {
+    // Validate metrics object
+    if (!metrics || typeof metrics !== 'object') {
+        showError('指标数据格式错误');
+        return;
+    }
+
+    // Validate required fields exist
+    const requiredFields = ['total_searches', 'total_companies', 'dedup_rate', 'avg_hit_rate', 'high_score_rate', 'day_on_day_growth', 'week_on_week_growth'];
+    const missingFields = requiredFields.filter(field => !(field in metrics));
+    if (missingFields.length > 0) {
+        showError(`缺少指标数据: ${missingFields.join(', ')}`);
+        console.error('Missing metrics:', missingFields);
+        return;
+    }
+
     const container = document.getElementById('metrics-container');
-    const hasData = metrics && Object.values(metrics).some(v => v !== 0 && v !== null);
+    if (!container) {
+        console.error('Metrics container not found');
+        return;
+    }
+
+    const hasData = Object.values(metrics).some(v => v !== 0 && v !== null && v !== undefined);
 
     if (!hasData) {
         showNoData();
@@ -193,13 +229,17 @@ function renderMetrics(metrics) {
         ${renderMetricCard('周对周增长 (Week-on-Week)', metrics.week_on_week_growth, 'percentage', metrics.week_on_week_growth, true)}
     `;
 
-    document.getElementById('loading-spinner').classList.add('d-none');
-    document.getElementById('error-alert').classList.add('d-none');
-    document.getElementById('no-data-message').classList.add('d-none');
+    const spinner = document.getElementById('loading-spinner');
+    const errorAlert = document.getElementById('error-alert');
+    const noDataMsg = document.getElementById('no-data-message');
+
+    if (spinner) spinner.classList.add('d-none');
+    if (errorAlert) errorAlert.classList.add('d-none');
+    if (noDataMsg) noDataMsg.classList.add('d-none');
 }
 
 /**
- * Load dashboard metrics from API
+ * Load dashboard metrics from API with timeout
  */
 function loadDashboard() {
     const days = getSelectedPeriod();
@@ -210,27 +250,50 @@ function loadDashboard() {
     // Show loading spinner
     showLoading();
 
-    // Fetch metrics from API
+    // Fetch metrics from API with timeout
     const apiUrl = `/api/analytics/dashboard?days=${days}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    fetch(apiUrl)
+    fetch(apiUrl, { signal: controller.signal })
         .then(response => {
+            clearTimeout(timeoutId);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
+            // Validate response structure
+            if (!data || typeof data.success === 'undefined') {
+                throw new Error('Invalid API response format');
+            }
+
             if (!data.success) {
-                showError(data.error.message);
+                const errorMsg = (data.error && data.error.message) || '未知错误';
+                showError(errorMsg);
                 console.error('API error:', data.error);
                 return;
+            }
+
+            // Validate metrics data exists
+            if (!data.data || !data.data.metrics) {
+                throw new Error('Metrics data missing from response');
             }
 
             // Render metrics
             renderMetrics(data.data.metrics);
         })
         .catch(error => {
+            clearTimeout(timeoutId);
+
+            // Handle abort (timeout)
+            if (error.name === 'AbortError') {
+                showError('请求超时（10秒）。请检查网络连接后重试。');
+                console.error('Dashboard request timeout');
+                return;
+            }
+
             const errorMsg = `数据加载失败: ${error.message}`;
             showError(errorMsg);
             console.error('Error loading dashboard:', error);
