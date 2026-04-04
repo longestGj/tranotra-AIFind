@@ -50,7 +50,7 @@ development_status:
   # Epic 2: 结果展示与快速操作 (Results Display & Interaction)
   epic-2: in-progress
   2-1-results-page-api: done
-  2-2-card-view-display: backlog
+  2-2-card-view-display: review
   2-3-table-view-sorting: backlog
   2-4-view-switching: backlog
   2-5-csv-export: backlog
@@ -78,10 +78,10 @@ summary:
   total_items: 24
   epics_in_progress: 1
   epics_done: 1
-  stories_backlog: 9
+  stories_backlog: 8
   stories_ready_for_dev: 0
   stories_in_progress: 0
-  stories_review: 0
+  stories_review: 1
   stories_done: 7
   retrospectives_done: 0
 
@@ -110,8 +110,9 @@ development_sequence:
     status: "in-progress"
     priority: P0-Critical
     depends_on: phase_1
-    current_story: "2-1-results-page-api"
-    note: "Started in parallel worktree for concurrent development"
+    current_story: "2-2-card-view-display"
+    last_updated: "2026-04-04"
+    note: "Story 2-1 complete; Story 2-2 specification ready for dev"
 
   phase_3:
     name: "Analytics & Optimization (Epic 3)"
@@ -137,11 +138,10 @@ estimated_effort:
 
 # Parallel Development (Worktree Status)
 parallel_development:
-  epic-1-branch: "feature/story-1-4-gemini-grounding-search"
-  epic-1-worktree: "epic-1-development"
-  epic-1-status: "active"
+  epic-1-branch: "master"
+  epic-1-status: "merged"
 
   epic-2-branch: "feature/epic-2-results-display"
   epic-2-worktree: "epic-2-development"
-  epic-2-status: "ready-for-merge"
-  epic-2-note: "Story 2-1 complete, ready for master merge on 2026-04-04"
+  epic-2-status: "in-development"
+  epic-2-note: "Story 2-1 complete; Story 2-2 specification ready on 2026-04-04"

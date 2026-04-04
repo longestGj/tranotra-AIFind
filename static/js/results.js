@@ -189,70 +189,170 @@ function renderCardView() {
 function createCompanyCard(company, index = 0) {
     const card = document.createElement('div');
     card.className = 'company-card';
+    card.setAttribute('data-company-id', company.id);
+
+    const scoreClass = company.prospect_score >= 8 ? 'score-high' :
+                       company.prospect_score >= 6 ? 'score-medium' : 'score-low';
+    const priorityEmoji = company.priority === 'HIGH' ? '🔴' :
+                          company.priority === 'MEDIUM' ? '🟡' : '⚫';
+
+    // Check if company is marked as contacted
+    const contactedCompanies = JSON.parse(localStorage.getItem('tranotra_leads_contacted_companies') || '{}');
+    const isContacted = !!contactedCompanies[company.id];
+
     card.innerHTML = `
         <div class="card-header">
-            <h3 class="company-name" id="company-name-${index}">${escapeHtml(company.name)}</h3>
-            <p class="company-location">${escapeHtml(company.city || 'N/A')}, ${escapeHtml(company.country || 'N/A')}</p>
+            <h2 class="card-title" id="company-name-${index}">${escapeHtml(company.name)}</h2>
+            <p class="card-location">
+                <span class="icon">📍</span>
+                ${escapeHtml(company.city || 'N/A')}, ${escapeHtml(company.country || 'N/A')}
+            </p>
         </div>
 
-        <div class="score-badge" style="background-color: ${getScoreColor(company.prospect_score)}" role="img" aria-label="评分: ${company.prospect_score || 'N/A'}/10">
-            Score: ${company.prospect_score || 'N/A'}/10
+        <div class="score-badge ${scoreClass}" role="img" aria-label="评分: ${company.prospect_score || 'N/A'}/10">
+            <span class="score-label">评分:</span>
+            <span class="score-value">${company.prospect_score || 'N/A'}/10</span>
+            <span class="priority-label">${priorityEmoji} ${escapeHtml(company.priority || 'N/A')}</span>
         </div>
 
-        <div class="priority-badge priority-${sanitizeCssClass(company.priority || 'LOW')}" aria-label="优先级: ${escapeHtml(company.priority || 'N/A')}">
-            ${escapeHtml(company.priority || 'N/A')}
-        </div>
-
-        <div class="card-details">
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <label>👥 员工:</label>
-                    <span>${escapeHtml(company.employees || 'N/A')}</span>
-                </div>
-                <div class="detail-item">
-                    <label>💰 年收:</label>
-                    <span>${escapeHtml(company.estimated_revenue || 'N/A')}</span>
-                </div>
-                <div class="detail-item">
-                    <label>🏭 产品:</label>
-                    <span>${escapeHtml(company.main_products || 'N/A')}</span>
-                </div>
-                <div class="detail-item">
-                    <label>🌍 出口:</label>
-                    <span>${escapeHtml(company.export_markets || 'N/A')}</span>
-                </div>
-                <div class="detail-item">
-                    <label>🎯 推荐产品:</label>
-                    <span>${escapeHtml(company.recommended_product || 'N/A')}</span>
-                </div>
-                <div class="detail-item">
-                    <label>📝 推荐理由:</label>
-                    <span>${escapeHtml(company.recommendation_reason || 'N/A')}</span>
-                </div>
+        <div class="card-details-grid">
+            <div class="detail-item">
+                <span class="icon">👥</span>
+                <span class="label">员工:</span>
+                <span class="value">${escapeHtml(company.employees || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">💰</span>
+                <span class="label">年收:</span>
+                <span class="value">${escapeHtml(company.estimated_revenue || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">🏭</span>
+                <span class="label">产品:</span>
+                <span class="value">${escapeHtml(company.main_products || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">🌍</span>
+                <span class="label">出口:</span>
+                <span class="value">${escapeHtml(company.export_markets || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">🎯</span>
+                <span class="label">推荐产品:</span>
+                <span class="value">${escapeHtml(company.recommended_product || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">📝</span>
+                <span class="label">推荐理由:</span>
+                <span class="value">${escapeHtml(company.recommendation_reason || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">⚙️</span>
+                <span class="label">原材料:</span>
+                <span class="value">${escapeHtml(company.raw_materials || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">📅</span>
+                <span class="label">成立年份:</span>
+                <span class="value">${escapeHtml(company.year_established || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">🚀</span>
+                <span class="label">EU/US/JP出口:</span>
+                <span class="value">${escapeHtml(company.eu_us_jp_export || 'N/A')}</span>
+            </div>
+            <div class="detail-item">
+                <span class="icon">🕐</span>
+                <span class="label">创建时间:</span>
+                <span class="value">${escapeHtml(company.created_at || 'N/A')}</span>
             </div>
         </div>
 
-        <div class="card-contact">
-            <label>📧 Email:</label>
-            <a href="mailto:${sanitizeEmail(company.contact_email) ? 'mailto:' + sanitizeEmail(company.contact_email) : '#'}" aria-label="邮件: ${escapeHtml(company.contact_email || 'N/A')}">${escapeHtml(company.contact_email || 'N/A')}</a>
-
-            <label>🔗 LinkedIn:</label>
-            <a href="${sanitizeUrl(company.linkedin_url)}" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn: ${escapeHtml(company.linkedin_url || 'N/A')}">${escapeHtml(company.linkedin_url || 'N/A')}</a>
-
-            <label>🌐 Website:</label>
-            <a href="${sanitizeUrl(company.website)}" target="_blank" rel="noopener noreferrer" aria-label="网站: ${escapeHtml(company.website || 'N/A')}">${escapeHtml(company.website || 'N/A')}</a>
-
-            <label>💼 联系职位:</label>
-            <span>${escapeHtml(company.best_contact_title || 'N/A')}</span>
+        <div class="contact-section">
+            <div class="contact-item">
+                <span class="icon">📧</span>
+                <a href="mailto:${sanitizeEmail(company.contact_email) ? sanitizeEmail(company.contact_email) : '#'}" class="contact-link" aria-label="邮件: ${escapeHtml(company.contact_email || 'N/A')}">${escapeHtml(company.contact_email || 'N/A')}</a>
+            </div>
+            <div class="contact-item">
+                <span class="icon">🔗</span>
+                <a href="${sanitizeUrl(company.linkedin_url)}" target="_blank" rel="noopener noreferrer" class="contact-link" aria-label="LinkedIn: ${escapeHtml(company.linkedin_url || 'N/A')}">LinkedIn</a>
+            </div>
+            <div class="contact-item">
+                <span class="icon">🌐</span>
+                <a href="${sanitizeUrl(company.website)}" target="_blank" rel="noopener noreferrer" class="contact-link" aria-label="网站: ${escapeHtml(company.website || 'N/A')}">Website</a>
+            </div>
+            <div class="contact-item">
+                <span class="icon">💼</span>
+                <span>${escapeHtml(company.best_contact_title || 'N/A')}</span>
+            </div>
         </div>
 
         <div class="card-actions">
-            <button class="action-btn" data-email="${escapeHtml(company.contact_email || '')}" onclick="copyToClipboard(this.getAttribute('data-email'), this)" aria-label="复制邮箱: ${escapeHtml(company.contact_email || 'N/A')}">📋 复制邮箱</button>
-            <button class="action-btn" data-url="${sanitizeUrl(company.linkedin_url)}" onclick="openUrl(this.getAttribute('data-url'))" aria-label="打开 LinkedIn">🔗 打开LinkedIn</button>
-            <button class="action-btn" data-url="${sanitizeUrl(company.website)}" onclick="openUrl(this.getAttribute('data-url'))" aria-label="打开网站">🌐 打开网站</button>
+            <button class="action-btn btn-copy" data-email="${escapeHtml(company.contact_email || '')}" aria-label="复制邮箱: ${escapeHtml(company.contact_email || 'N/A')}">📋 Copy Email</button>
+            <button class="action-btn btn-open-linkedin" data-url="${sanitizeUrl(company.linkedin_url)}" aria-label="打开 LinkedIn">🔗 Open LinkedIn</button>
+            <button class="action-btn btn-open-website" data-url="${sanitizeUrl(company.website)}" aria-label="打开网站">🌐 Open Website</button>
+            <button class="action-btn btn-draft-email" disabled title="Coming in Phase 2">📧 Draft Email</button>
+            <button class="action-btn btn-mark-contacted ${isContacted ? 'active' : ''}" data-company-id="${company.id}" aria-label="${isContacted ? '取消标记' : '标记已联系'}">
+                ${isContacted ? '✗ Unmark' : '✓ Mark as Contacted'}
+            </button>
+            <button class="action-btn btn-add-note" data-company-id="${company.id}" aria-label="添加备注">📝 Add Note</button>
         </div>
     `;
+
+    // Attach event listeners
+    attachCardActions(card, company);
+
     return card;
+}
+
+/**
+ * Attach event listeners to card action buttons
+ */
+function attachCardActions(cardElement, company) {
+    // Copy email button
+    const copyBtn = cardElement.querySelector('.btn-copy');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            const email = this.getAttribute('data-email');
+            copyToClipboard(email, this);
+        });
+    }
+
+    // Open LinkedIn button
+    const linkedinBtn = cardElement.querySelector('.btn-open-linkedin');
+    if (linkedinBtn) {
+        linkedinBtn.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            openUrl(url);
+        });
+    }
+
+    // Open Website button
+    const websiteBtn = cardElement.querySelector('.btn-open-website');
+    if (websiteBtn) {
+        websiteBtn.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            openUrl(url);
+        });
+    }
+
+    // Mark as Contacted button
+    const markBtn = cardElement.querySelector('.btn-mark-contacted');
+    if (markBtn) {
+        markBtn.addEventListener('click', function() {
+            const companyId = this.getAttribute('data-company-id');
+            toggleContacted(companyId, this);
+        });
+    }
+
+    // Add Note button
+    const noteBtn = cardElement.querySelector('.btn-add-note');
+    if (noteBtn) {
+        noteBtn.addEventListener('click', function() {
+            const companyId = this.getAttribute('data-company-id');
+            openNoteModal(companyId);
+        });
+    }
 }
 
 /**
@@ -479,4 +579,104 @@ function goBackToSearch() {
 function showError(message) {
     const container = document.getElementById('results-container');
     container.innerHTML = `<div class="error-message"><p>❌ ${escapeHtml(message)}</p></div>`;
+}
+
+/**
+ * Show toast notification
+ */
+function showToast(message, duration = 2000) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+/**
+ * Toggle contacted state (localStorage)
+ */
+function toggleContacted(companyId, buttonElement) {
+    const key = 'tranotra_leads_contacted_companies';
+    const contactedStr = localStorage.getItem(key) || '{}';
+    const contacted = JSON.parse(contactedStr);
+
+    if (contacted[companyId]) {
+        delete contacted[companyId];
+    } else {
+        contacted[companyId] = {
+            contacted: true,
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    localStorage.setItem(key, JSON.stringify(contacted));
+
+    // Update button UI
+    if (buttonElement) {
+        if (contacted[companyId]) {
+            buttonElement.classList.add('active');
+            buttonElement.textContent = '✗ Unmark';
+        } else {
+            buttonElement.classList.remove('active');
+            buttonElement.textContent = '✓ Mark as Contacted';
+        }
+    }
+}
+
+/**
+ * Open note modal
+ */
+function openNoteModal(companyId) {
+    const key = `tranotra_leads_notes_${companyId}`;
+    const existingNote = localStorage.getItem(key) || '';
+
+    const modal = document.createElement('div');
+    modal.className = 'note-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>添加备注</h3>
+            <textarea placeholder="输入您的备注..." maxlength="500">${escapeHtml(existingNote)}</textarea>
+            <div class="modal-actions">
+                <button class="btn-save">Save</button>
+                <button class="btn-cancel">Cancel</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Focus on textarea
+    setTimeout(() => {
+        modal.querySelector('textarea').focus();
+    }, 100);
+
+    // Save button handler
+    modal.querySelector('.btn-save').addEventListener('click', () => {
+        const noteText = modal.querySelector('textarea').value;
+        localStorage.setItem(key, noteText);
+        modal.parentNode.removeChild(modal);
+        showToast('备注已保存', 2000);
+    });
+
+    // Cancel button handler
+    modal.querySelector('.btn-cancel').addEventListener('click', () => {
+        modal.parentNode.removeChild(modal);
+    });
+
+    // Close on Escape key
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            modal.parentNode.removeChild(modal);
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
 }
