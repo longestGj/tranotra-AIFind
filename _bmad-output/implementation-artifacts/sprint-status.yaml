@@ -50,12 +50,12 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: 结果展示与快速操作 (Results Display & Interaction)
-  epic-2: in-progress
+  epic-2: done
   2-1-results-page-api: done
   2-2-card-view-display: done
   2-3-table-view-sorting: done
   2-4-view-switching: done
-  2-5-csv-export: ready-for-dev
+  2-5-csv-export: done
   epic-2-retrospective: optional
 
   # Epic 3: 搜索效率分析 (Analytics & Optimization)
