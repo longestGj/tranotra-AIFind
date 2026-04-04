@@ -368,12 +368,23 @@ function renderTableView() {
     container.setAttribute('role', 'region');
     container.setAttribute('aria-label', `搜索结果表格，共 ${currentState.companies.length} 家公司`);
 
-    // Load sort preference from localStorage
-    const sortPref = localStorage.getItem('tranotra_leads_table_sort');
-    if (sortPref) {
-        const pref = JSON.parse(sortPref);
-        currentState.sortColumn = pref.column || 'prospect_score';
-        currentState.sortDirection = pref.direction || 'desc';
+    // Load sort preference from localStorage (only on first render to avoid race conditions)
+    // Use a flag to prevent reloading on every render
+    if (!currentState._sortPrefLoaded) {
+        const sortPref = localStorage.getItem('tranotra_leads_table_sort');
+        if (sortPref) {
+            try {
+                const pref = JSON.parse(sortPref);
+                currentState.sortColumn = pref.column || 'prospect_score';
+                currentState.sortDirection = pref.direction || 'desc';
+            } catch (e) {
+                console.warn('Failed to parse sort preference:', e);
+                // Fall back to default sort
+                currentState.sortColumn = 'prospect_score';
+                currentState.sortDirection = 'desc';
+            }
+        }
+        currentState._sortPrefLoaded = true;
     }
 
     // Sort companies based on current preferences
@@ -459,6 +470,13 @@ function renderTableView() {
  * Sort table data
  */
 function sortTableData(companies, column, direction) {
+    // Validate column parameter to prevent prototype pollution
+    const allowedColumns = ['name', 'country', 'prospect_score', 'priority', 'website'];
+    if (!allowedColumns.includes(column)) {
+        console.warn(`Invalid sort column: ${column}. Using default.`);
+        column = 'prospect_score';
+    }
+
     const sorted = [...companies];
 
     sorted.sort((a, b) => {
@@ -473,6 +491,13 @@ function sortTableData(companies, column, direction) {
         if (typeof aVal === 'string') {
             aVal = aVal.toLowerCase();
             bVal = bVal.toLowerCase();
+        } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+            // Handle numeric comparison directly
+            if (direction === 'asc') {
+                return aVal - bVal;
+            } else {
+                return bVal - aVal;
+            }
         }
 
         if (direction === 'asc') {
@@ -493,11 +518,23 @@ function handleTableHeaderClick(column) {
     currentState.sortColumn = column;
     currentState.sortDirection = newDirection;
 
-    // Save preference to localStorage
-    localStorage.setItem('tranotra_leads_table_sort', JSON.stringify({
-        column: currentState.sortColumn,
-        direction: currentState.sortDirection
-    }));
+    // Save preference to localStorage with error handling
+    try {
+        localStorage.setItem('tranotra_leads_table_sort', JSON.stringify({
+            column: currentState.sortColumn,
+            direction: currentState.sortDirection
+        }));
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            console.warn('localStorage quota exceeded, sort preference not saved');
+        } else {
+            console.warn('Failed to save sort preference:', e);
+        }
+        // Continue anyway - sort will still work, just won't be persisted
+    }
+
+    // Reset the loaded flag to allow re-reading from localStorage on next render
+    currentState._sortPrefLoaded = false;
 
     // Re-render table
     renderTableView();
@@ -537,11 +574,32 @@ function escapeHtml(text) {
 function sanitizeUrl(url) {
     if (!url || typeof url !== 'string') return '#';
     url = url.trim();
+
+    // Block dangerous protocols
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.startsWith('javascript:') ||
+        lowerUrl.startsWith('data:') ||
+        lowerUrl.startsWith('vbscript:')) {
+        return '#';
+    }
+
+    // Allow http, https, and protocol-relative URLs
     if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
+        try {
+            // Validate it's a valid URL
+            new URL(url);
+            return url;
+        } catch (e) {
+            return '#';
+        }
     }
     if (url.startsWith('//')) {
-        return 'https:' + url;
+        try {
+            new URL('https:' + url);
+            return 'https:' + url;
+        } catch (e) {
+            return '#';
+        }
     }
     return '#';
 }
@@ -603,13 +661,25 @@ function openUrl(url) {
  */
 function switchView(view) {
     currentState.view = view;
-    localStorage.setItem('tranotra_leads_view_preference', view);
+
+    try {
+        localStorage.setItem('tranotra_leads_view_preference', view);
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            console.warn('localStorage quota exceeded, view preference not saved');
+        }
+    }
 
     // Update button styles
     document.querySelectorAll('.view-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     document.querySelector(`.view-btn[data-view="${view}"]`).classList.add('active');
+
+    // Reset sort preference loading flag when switching to table view
+    if (view === 'table') {
+        currentState._sortPrefLoaded = false;
+    }
 
     // Re-render
     if (view === 'card') {
@@ -630,9 +700,11 @@ function updatePagination() {
     const jumpInput = document.getElementById('jump-page-input');
 
     // Update page info text
-    const totalRecords = (currentState.totalPages - 1) * currentState.perPage + currentState.companies.length;
-    const startRecord = (currentState.page - 1) * currentState.perPage + 1;
-    const endRecord = Math.min(currentState.page * currentState.perPage, totalRecords);
+    // Handle case where totalPages is 0 or undefined
+    const totalPages = Math.max(currentState.totalPages || 1, 1);
+    const totalRecords = (totalPages - 1) * currentState.perPage + currentState.companies.length;
+    const startRecord = currentState.companies.length > 0 ? (currentState.page - 1) * currentState.perPage + 1 : 0;
+    const endRecord = currentState.companies.length > 0 ? Math.min(currentState.page * currentState.perPage, totalRecords) : 0;
     pageInfo.textContent = `显示 ${startRecord}-${endRecord} / ${totalRecords} 条记录`;
 
     // Update Previous/Next buttons
@@ -677,9 +749,9 @@ function updatePagination() {
         }
     }
 
-    // Update jump input max value
+    // Update jump input max value (always set, regardless of pageNumbersContainer)
     if (jumpInput) {
-        jumpInput.max = currentState.totalPages;
+        jumpInput.max = Math.max(currentState.totalPages, 1);
     }
 }
 
@@ -711,10 +783,15 @@ function nextPage() {
  * Go to specific page
  */
 function goToPage(pageNum) {
+    // Prevent multiple concurrent requests (race condition)
+    if (currentState.isFetching) {
+        console.warn('Request already in progress, ignoring duplicate page navigation');
+        return;
+    }
+
     if (pageNum >= 1 && pageNum <= currentState.totalPages) {
         currentState.page = pageNum;
-        updateUrl();
-        fetchResults();
+        fetchResults();  // fetchResults will update URL and set isFetching flag
         window.scrollTo(0, 0);
     }
 }
@@ -725,12 +802,13 @@ function goToPage(pageNum) {
 function jumpToPage() {
     const input = document.getElementById('jump-page-input');
     const pageNum = parseInt(input.value, 10);
+    const maxPage = Math.max(currentState.totalPages || 1, 1);
 
-    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= currentState.totalPages) {
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= maxPage) {
         goToPage(pageNum);
         input.value = '';
     } else {
-        showToast('请输入 1-' + currentState.totalPages + ' 之间的页码');
+        showToast(`请输入 1-${maxPage} 之间的页码`);
         input.value = '';
     }
 }

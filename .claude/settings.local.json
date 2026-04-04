@@ -100,7 +100,8 @@
       "Bash(node -c static/js/results.js)",
       "Bash(python -m pytest tests/ -v)",
       "Bash(python -m pytest tests/e2e/test_search_results_api.py::TestSearchResultsAPI::test_get_results_without_filters -v)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
