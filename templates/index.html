@@ -21,6 +21,34 @@
             padding: 20px;
         }
 
+        .navbar {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 15px 0;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            text-decoration: none;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         .container {
             background: white;
             border-radius: 12px;
@@ -187,6 +215,11 @@
     </style>
 </head>
 <body>
+    <div class="navbar">
+        <a href="/" class="nav-link active">🔍 搜索 (Search)</a>
+        <a href="/dashboard" class="nav-link">📊 仪表板 (Analytics)</a>
+    </div>
+
     <div class="container">
         <h1>Tranotra Leads</h1>
         <p class="subtitle">自动发现潜在客户</p>

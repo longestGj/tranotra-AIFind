@@ -116,7 +116,10 @@
       "Bash(curl:*)",
       "Bash(python:*)",
       "Bash(sed:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(PYTHONPATH=src python tests/integration/test_markdown_parser.py)",
+      "Bash(xargs head:*)",
+      "Bash(rm:*)"
     ]
   }
 }

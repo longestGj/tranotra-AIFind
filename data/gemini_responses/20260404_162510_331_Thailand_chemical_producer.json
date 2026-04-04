@@ -1,0 +1,104 @@
+Here are soft PVC product manufacturers in Thailand that match your query, focusing on companies with strong chemical formulation capabilities or ties to the chemical industry, 100+ employees, and export to EU/USA. The data is presented in JSON format for clarity and structured access.
+
+**Note on "Chemical Producer" Interpretation:**
+It is rare for a finished soft PVC product manufacturer to also be a primary "chemical producer" (i.e., manufacturing raw chemicals like plasticizers or PVC resin themselves). Most procure these. For this search, "chemical producer" has been interpreted as:
+1.  Companies with advanced compounding capabilities and a strong focus on material science and formulation.
+2.  Companies that are part of larger groups involved in chemical or polymer production.
+3.  Companies explicitly mentioning R&D in materials and custom chemical formulations.
+
+The "Best Plasticizer for them" and "Why that plasticizer" fields are expert inferences based on the company's stated product lines and common industry practices.
+
+```json
+[
+  {
+    "Company Name (English)": "Starflex Public Company Limited",
+    "City/Province": "Samut Prakan",
+    "Year Established": "1994",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "500-2000",
+    "Estimated Annual Revenue": "฿1 Billion - ฿5 Billion THB (approx. $30M - $150M USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "Flexible PVC film, PVC leatherette, PVC foam, Tarpaulin, Flexible ducting, Automotive interior materials, Packaging films",
+    "Export Markets (which countries they sell to)": "Southeast Asia, Middle East, Europe (e.g., Germany, UK), USA, Japan, Australia",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "PVC resin, various plasticizers (e.g., phthalates, non-phthalates), stabilizers, fillers, colorants",
+    "Best Plasticizer for them": "DOTP (Dioctyl Terephthalate)",
+    "Why that plasticizer (1 sentence)": "DOTP is a versatile, non-phthalate plasticizer offering good processability, mechanical properties, and regulatory compliance for many of their flexible PVC film, leatherette, and general-purpose applications.",
+    "Company Website": "https://www.starflex.co.th/",
+    "Contact Email": "info@starflex.co.th",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/starflex-public-company-limited/",
+    "Best job title to contact": "Purchasing Manager / R&D Manager",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "Thai Polyplastics Co., Ltd. (Part of SCG Chemicals)",
+    "City/Province": "Rayong",
+    "Year Established": "1993 (SCG Chemicals established earlier)",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "500-2000 (for Thai Polyplastics, much larger for SCG Chemicals group)",
+    "Estimated Annual Revenue": "Confidential, part of large SCG Chemicals revenue",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "PVC compounds (flexible, rigid), PVC resin, Masterbatch, various plastic and chemical products; likely supply compounds for soft PVC products like cables, footwear, hoses.",
+    "Export Markets (which countries they sell to)": "Global, including Southeast Asia, China, India, Europe, USA",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "Ethylene Dichloride (EDC), Vinyl Chloride Monomer (VCM), PVC resin, various plasticizers (phthalate & non-phthalate), stabilizers, fillers",
+    "Best Plasticizer for them": "ATBC (Acetyl Tributyl Citrate)",
+    "Why that plasticizer (1 sentence)": "As a major chemical producer focusing on compounds, ATBC is ideal for their food contact, medical, and toy applications due to its non-toxicity and excellent environmental profile, crucial for EU/USA markets.",
+    "Company Website": "https://www.scgchemicals.com/",
+    "Contact Email": "info@scgchemicals.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/scg-chemicals/",
+    "Best job title to contact": "Procurement Director / Product Development Manager",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "V.R.H. Plastics Industry Co., Ltd.",
+    "City/Province": "Samut Sakhon",
+    "Year Established": "1983",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "100-500",
+    "Estimated Annual Revenue": "฿500 Million - ฿1 Billion THB (approx. $15M - $30M USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "PVC compounds (flexible and rigid), particularly for wire & cable, general purpose, automotive, and medical applications.",
+    "Export Markets (which countries they sell to)": "Asia, Middle East, Europe, Africa, USA",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "PVC resin, DOP, DOTP, DOS, stabilizers, lubricants, fillers, colorants",
+    "Best Plasticizer for them": "TOTM (Trioctyl Trimellitate)",
+    "Why that plasticizer (1 sentence)": "Given their focus on high-performance wire & cable and automotive compounds, TOTM provides excellent heat resistance, low volatility, and good electrical properties, critical for these demanding applications.",
+    "Company Website": "http://www.vrhplastic.com/",
+    "Contact Email": "info@vrhplastic.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/v.r.h.-plastics-industry-co.,-ltd./",
+    "Best job title to contact": "Purchasing Manager / Technical Sales Manager",
+    "Prospect Score (1-10)": 8
+  },
+  {
+    "Company Name (English)": "Thai Plastic and Chemicals Public Company Limited (TPC)",
+    "City/Province": "Bangkok (Head Office), Manufacturing in Rayong, Samut Prakan, etc.",
+    "Year Established": "1966",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "500-2000",
+    "Estimated Annual Revenue": "฿10 Billion - ฿20 Billion THB (approx. $300M - $600M USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "PVC resin (suspension & emulsion), PVC compounds, Caustic Soda, EDC, VCM. Supplies raw materials and compounds for various PVC products, including soft PVC.",
+    "Export Markets (which countries they sell to)": "Global, including ASEAN, China, India, Europe, USA",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "Ethylene Dichloride (EDC), Vinyl Chloride Monomer (VCM), PVC resin, various plasticizers (phthalate & non-phthalate), stabilizers, additives",
+    "Best Plasticizer for them": "DOS (Dioctyl Sebacate)",
+    "Why that plasticizer (1 sentence)": "As a major PVC resin and compound supplier, DOS is excellent for specialized applications requiring good low-temperature flexibility and weather resistance, such as certain outdoor or automotive parts.",
+    "Company Website": "https://www.thaipc.co.th/",
+    "Contact Email": "info@thaipc.co.th",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/thai-plastic-and-chemicals-public-company-limited/",
+    "Best job title to contact": "Head of Procurement / R&D Director",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "Royal Chemicals Co., Ltd.",
+    "City/Province": "Samut Prakan",
+    "Year Established": "1994",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "100-500",
+    "Estimated Annual Revenue": "฿100 Million - ฿500 Million THB (approx. $3M - $15M USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "PVC compounds (flexible, semi-rigid, rigid), specializing in electrical cable, automotive, construction, and general-purpose applications.",
+    "Export Markets (which countries they sell to)": "Asia, Middle East, Europe",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "PVC resin, DOP, DOTP, DINP, stabilizers, flame retardants, fillers, lubricants",
+    "Best Plasticizer for them": "DINP (Diisononyl Phthalate)",
+    "Why that plasticizer (1 sentence)": "For their range of electrical cable and general-purpose compounds, DINP offers a cost-effective balance of good mechanical properties, processability, and durability, widely used in regulated markets.",
+    "Company Website": "http://www.royalchemicals.co.th/",
+    "Contact Email": "royal_chemi@royalchemicals.co.th",
+    "LinkedIn Company Page URL": "Not readily available (small presence)",
+    "Best job title to contact": "Production Manager / Sales Manager",
+    "Prospect Score (1-10)": 7
+  }
+]
+```
