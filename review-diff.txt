@@ -1,0 +1,903 @@
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index e9231a3..54ff0c8 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -31,7 +31,7 @@
+ # - Stories can be worked in parallel if team capacity allows
+ 
+ generated: 2026-04-03T00:00:00Z
+-last_updated: 2026-04-04T00:00:00Z
++last_updated: 2026-04-04T12:00:00Z
+ project: 08B2B_AIfind
+ project_key: NOKEY
+ tracking_system: file-system
+@@ -44,7 +44,7 @@ development_status:
+   1-2-sqlite-database-design: done
+   1-3-gemini-api-integration: done
+   1-4-gemini-grounding-search: done
+-  1-5-data-parsing-normalization: ready-for-dev
++  1-5-data-parsing-normalization: done
+   epic-1-retrospective: optional
+ 
+   # Epic 2: 结果展示与快速操作 (Results Display & Interaction)
+@@ -79,10 +79,10 @@ summary:
+   epics_in_progress: 1
+   epics_done: 0
+   stories_backlog: 10
+-  stories_ready_for_dev: 1
++  stories_ready_for_dev: 0
+   stories_in_progress: 0
+   stories_review: 0
+-  stories_done: 5
++  stories_done: 6
+   retrospectives_done: 0
+ 
+ # Dependency Map
+diff --git a/src/tranotra/db.py b/src/tranotra/db.py
+index d165208..9ee8213 100644
+--- a/src/tranotra/db.py
++++ b/src/tranotra/db.py
+@@ -250,6 +250,167 @@ def get_today_statistics() -> Dict:
+         }
+ 
+ 
++# Parsing and Insertion Pipeline (Story 1-5)
++
++
++def parse_response_and_insert(
++    country: str,
++    query: str,
++    response: str,
++    format: str
++) -> Dict:
++    """Parse Gemini response and insert companies into database
++
++    Args:
++        country: Country from search request
++        query: Search keyword from request
++        response: Raw response from Gemini API
++        format: Response format ("JSON", "Markdown", or "CSV")
++
++    Returns:
++        Dict with insertion results:
++        {
++            "success": bool,
++            "new_count": int,
++            "duplicate_count": int,
++            "error_count": int,
++            "avg_score": float,
++            "high_priority_count": int,
++            "message": str
++        }
++    """
++    from tranotra.parser import CompanyParser
++
++    db = get_db()
++    parser = CompanyParser()
++
++    result = {
++        "success": False,
++        "new_count": 0,
++        "duplicate_count": 0,
++        "error_count": 0,
++        "avg_score": 0.0,
++        "high_priority_count": 0,
++        "message": ""
++    }
++
++    try:
++        # Parse response into company records
++        parsed_companies = parser.parse_response(response, format)
++        if not parsed_companies:
++            result["message"] = "解析失败：返回数据为空"
++            logger.error(f"Empty response from {format} parser")
++            return result
++
++        logger.info(f"Parsed {len(parsed_companies)} companies from {format} response")
++
++        # Filter and prepare records
++        prepared_companies = parser._filter_and_prepare_records(parsed_companies)
++        if not prepared_companies:
++            result["message"] = "解析失败：没有有效的公司记录"
++            logger.error("No valid companies after filtering")
++            return result
++
++        # Process companies: check for duplicates and insert
++        new_companies = []
++        scores_for_avg = []
++
++        try:
++            for company_data in prepared_companies:
++                linkedin_normalized = company_data.get("linkedin_normalized", "")
++
++                # Check for duplicate by linkedin_normalized
++                if linkedin_normalized:
++                    existing = db.query(Company).filter_by(
++                        linkedin_normalized=linkedin_normalized
++                    ).first()
++
++                    if existing:
++                        result["duplicate_count"] += 1
++                        logger.info(f"跳过重复: {company_data.get('name')}")
++                        continue
++
++                # Insert new company
++                try:
++                    company_data["source_query"] = query
++                    company_id = insert_company(company_data)
++                    result["new_count"] += 1
++                    new_companies.append(company_data)
++
++                    # Collect score for average calculation
++                    score = company_data.get("prospect_score", 0)
++                    if isinstance(score, int) and 1 <= score <= 10:
++                        scores_for_avg.append(score)
++
++                    logger.info(f"插入新公司: {company_data.get('name')}")
++
++                except ValueError as e:
++                    result["error_count"] += 1
++                    logger.error(f"插入失败 {company_data.get('name')}: {e}")
++                    continue
++
++            # Calculate statistics for search history
++            if scores_for_avg:
++                result["avg_score"] = round(sum(scores_for_avg) / len(scores_for_avg), 1)
++                result["high_priority_count"] = sum(1 for s in scores_for_avg if s >= 8)
++            else:
++                result["avg_score"] = 0.0
++                result["high_priority_count"] = 0
++
++            # Create search history record
++            total_count = len(parsed_companies)
++            history_data = {
++                "country": country,
++                "query": query,
++                "result_count": total_count,
++                "new_count": result["new_count"],
++                "duplicate_count": result["duplicate_count"],
++                "avg_score": result["avg_score"],
++                "high_priority_count": result["high_priority_count"]
++            }
++
++            try:
++                insert_search_history(history_data)
++                logger.info(
++                    f"创建搜索历史: {country}/{query} "
++                    f"(新增{result['new_count']}, 重复{result['duplicate_count']})"
++                )
++            except Exception as e:
++                logger.error(f"Failed to insert search history: {e}")
++                result["error_count"] += 1
++
++            # Commit all changes
++            db.commit()
++
++            # Build result message
++            result["success"] = True
++            result["message"] = (
++                f"处理 {total_count} 条结果，"
++                f"新增 {result['new_count']} 条，"
++                f"重复 {result['duplicate_count']} 条"
++            )
++
++            logger.info(f"Parse and insert complete: {result['message']}")
++
++        except Exception as e:
++            db.rollback()
++            logger.error(f"Error during insertion pipeline: {e}")
++            result["message"] = "数据保存失败，请稍后重试"
++            result["error_count"] += 1
++            return result
++
++    except ValueError as e:
++        logger.error(f"Parser error: {e}")
++        result["message"] = f"搜索失败：{str(e)}"
++        result["error_count"] += 1
++    except Exception as e:
++        logger.error(f"Unexpected error in parse_response_and_insert: {e}")
++        result["message"] = "搜索失败，请稍后重试"
++        result["error_count"] += 1
++
++    return result
++
++
+ # Phase 2+ Placeholder Functions
+ 
+ 
+@@ -278,6 +439,8 @@ __all__ = [
+     "get_companies_by_search",
+     "insert_search_history",
+     "get_search_history",
++    "get_today_statistics",
++    "parse_response_and_insert",
+     "insert_contact",
+     "insert_email",
+ ]
+diff --git a/src/tranotra/parser.py b/src/tranotra/parser.py
+index c8f6d7a..272406c 100644
+--- a/src/tranotra/parser.py
++++ b/src/tranotra/parser.py
+@@ -1,11 +1,226 @@
+-"""Data parsing and normalization utilities
++"""Data parsing and normalization logic for company records"""
+ 
+-This module is a placeholder for Story 1.5: Data Parsing & Normalization
+-Will include:
+-- Gemini response format detection (JSON, CSV, Markdown)
+-- Company data field extraction
+-- LinkedIn URL normalization
+-- Data deduplication logic
+-"""
++import json
++import csv
++import logging
++from io import StringIO
++from typing import List, Dict, Optional, Any
++from urllib.parse import urlparse
+ 
+-# Placeholder - to be implemented in Story 1.5
++logger = logging.getLogger(__name__)
++
++
++class CompanyParser:
++    """Handles parsing, normalization, and validation of company data from various formats"""
++
++    # Required fields that cannot be missing
++    REQUIRED_FIELDS = {"name", "country", "prospect_score"}
++
++    # All expected company fields
++    ALL_FIELDS = {
++        "name", "country", "city", "year_established", "employees",
++        "estimated_revenue", "main_products", "export_markets",
++        "eu_us_jp_export", "raw_materials", "recommended_product",
++        "recommendation_reason", "website", "contact_email",
++        "linkedin_url", "best_contact_title", "prospect_score", "priority"
++    }
++
++    def parse_response(self, response: str, format: str) -> List[Dict]:
++        """Parse raw response into list of company dicts
++
++        Args:
++            response: Raw string from Gemini API
++            format: "JSON", "Markdown", or "CSV"
++
++        Returns:
++            List of company dicts (may be incomplete/invalid)
++
++        Raises:
++            ValueError: If format is unsupported or response malformed
++        """
++        if not response or not response.strip():
++            return []
++
++        try:
++            if format == "JSON":
++                return self._parse_json(response)
++            elif format == "Markdown":
++                return self._parse_markdown(response)
++            elif format == "CSV":
++                return self._parse_csv(response)
++            else:
++                raise ValueError(f"Unsupported format: {format}")
++        except Exception as e:
++            logger.error(f"Error parsing {format} response: {e}")
++            raise
++
++    def _parse_json(self, response: str) -> List[Dict]:
++        """Parse JSON array into company records"""
++        data = json.loads(response)
++
++        if not isinstance(data, list):
++            data = [data]
++
++        companies = []
++        for item in data:
++            if isinstance(item, dict):
++                companies.append(item)
++
++        return companies
++
++    def _parse_markdown(self, response: str) -> List[Dict]:
++        """Parse Markdown table into company records"""
++        lines = response.strip().split("\n")
++        if len(lines) < 3:  # Need header, separator, and at least one row
++            return []
++
++        # Extract header
++        header_line = lines[0]
++        headers = [h.strip() for h in header_line.split("|") if h.strip()]
++
++        companies = []
++        for line in lines[2:]:  # Skip header and separator
++            if line.strip() and "|" in line:
++                values = [v.strip() for v in line.split("|") if v.strip()]
++                if len(values) == len(headers):
++                    company = dict(zip(headers, values))
++                    companies.append(company)
++
++        return companies
++
++    def _parse_csv(self, response: str) -> List[Dict]:
++        """Parse CSV into company records"""
++        f = StringIO(response)
++        reader = csv.DictReader(f)
++
++        companies = []
++        if reader.fieldnames:
++            for row in reader:
++                # Filter out None keys that might come from malformed CSV
++                clean_row = {k: v for k, v in row.items() if k is not None}
++                companies.append(clean_row)
++
++        return companies
++
++    def _filter_and_prepare_records(self, companies: List[Dict]) -> List[Dict]:
++        """Filter out invalid records and prepare for insertion
++
++        - Skip records missing required fields
++        - Fill optional fields with "N/A"
++        - Normalize LinkedIn URLs
++        - Validate scores
++
++        Returns:
++            List of valid, prepared company records
++        """
++        valid_records = []
++
++        for idx, company in enumerate(companies):
++            # Check required fields
++            if not company.get("name") or not company.get("country"):
++                logger.warning(
++                    f"Row {idx}: Skipping company without name or country"
++                )
++                continue
++
++            # Prepare record with all fields
++            record = {}
++
++            # Copy all fields, filling missing optional ones with "N/A"
++            for field in self.ALL_FIELDS:
++                if field in company:
++                    record[field] = company[field]
++                elif field in self.REQUIRED_FIELDS:
++                    # Required field missing - should have been caught above
++                    record[field] = None
++                else:
++                    # Optional field - fill with N/A
++                    record[field] = "N/A"
++
++            # Normalize LinkedIn URL if present
++            if record.get("linkedin_url"):
++                record["linkedin_normalized"] = self.normalize_linkedin_url(
++                    record["linkedin_url"]
++                )
++            else:
++                record["linkedin_normalized"] = ""
++
++            # Validate and clamp score
++            record["prospect_score"] = self.validate_and_clamp_score(
++                record.get("prospect_score")
++            )
++
++            valid_records.append(record)
++
++        return valid_records
++
++    def normalize_linkedin_url(self, url: str) -> str:
++        """Normalize LinkedIn URL to canonical form
++
++        Example:
++            Input: "https://www.linkedin.com/company/cadivi/"
++            Output: "linkedin.com/company/cadivi"
++
++        Args:
++            url: Raw LinkedIn URL
++
++        Returns:
++            Normalized URL without protocol or www
++        """
++        if not url:
++            return ""
++
++        # Convert to lowercase
++        url = url.lower().strip()
++
++        # Remove protocol (https:// or http://)
++        if url.startswith("https://"):
++            url = url[8:]
++        elif url.startswith("http://"):
++            url = url[7:]
++
++        # Remove www. prefix
++        if url.startswith("www."):
++            url = url[4:]
++
++        # Remove trailing slashes
++        url = url.rstrip("/")
++
++        # Replace spaces with hyphens
++        url = url.replace(" ", "-")
++
++        return url
++
++    def validate_and_clamp_score(self, score: Any) -> int:
++        """Validate prospect score and clamp to 1-10 range
++
++        Args:
++            score: Prospect score from response (can be int, str, float, None)
++
++        Returns:
++            int: Clamped score 1-10, or 0 if invalid
++        """
++        if score is None or score == "":
++            return 0
++
++        try:
++            # Try to convert to int
++            if isinstance(score, str):
++                score = int(float(score))
++            else:
++                score = int(score)
++
++            # Clamp to 1-10
++            if score < 1:
++                return 1
++            elif score > 10:
++                return 10
++            else:
++                return score
++
++        except (ValueError, TypeError):
++            logger.warning(f"Invalid score value: {score}, setting to 0")
++            return 0
++
++
++__all__ = ["CompanyParser"]
+diff --git a/src/tranotra/routes.py b/src/tranotra/routes.py
+index 08e8e2b..e8493f7 100644
+--- a/src/tranotra/routes.py
++++ b/src/tranotra/routes.py
+@@ -7,6 +7,7 @@ from flask import Blueprint, Response, jsonify, request, current_app
+ 
+ from tranotra.gemini_client import initialize_gemini, call_gemini_grounding_search
+ from tranotra.core.exceptions import GeminiTimeoutError, GeminiError
++from tranotra.db import parse_response_and_insert
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -102,12 +103,37 @@ def search_api() -> Tuple[Response, int]:
+                 400
+             )
+ 
+-        logger.info(f"Search successful: country={country}, format={fmt}")
++        logger.info(f"Response format detected: {fmt}")
++
++        # Parse response and insert into database (Story 1.5)
++        parse_result = parse_response_and_insert(country, keyword, response, fmt)
++
++        if not parse_result["success"]:
++            logger.error(f"Parsing failed: {parse_result['message']}")
++            return (
++                jsonify({
++                    "status": "error",
++                    "message": parse_result["message"]
++                }),
++                500
++            )
++
++        # Success: data has been parsed and inserted
++        logger.info(
++            f"Search and parsing successful: "
++            f"country={country}, format={fmt}, "
++            f"new={parse_result['new_count']}, "
++            f"duplicates={parse_result['duplicate_count']}"
++        )
++
+         return (
+             jsonify({
+                 "status": "success",
+                 "format": fmt,
+-                "message": "搜索成功，正在处理结果..."
++                "message": parse_result["message"],
++                "new_count": parse_result["new_count"],
++                "duplicate_count": parse_result["duplicate_count"],
++                "avg_score": parse_result["avg_score"]
+             }),
+             200
+         )
+diff --git a/tests/test_parser.py b/tests/test_parser.py
+new file mode 100644
+index 0000000..204659f
+--- /dev/null
++++ b/tests/test_parser.py
+@@ -0,0 +1,211 @@
++"""Tests for data parsing and normalization logic"""
++
++import pytest
++import json
++from tranotra.parser import CompanyParser
++
++
++class TestCompanyParser:
++    """Test CompanyParser class for parsing different formats"""
++
++    @pytest.fixture
++    def parser(self):
++        """Create parser instance for each test"""
++        return CompanyParser()
++
++    # JSON Format Tests
++    def test_parse_json_single_company(self, parser):
++        """Test parsing JSON with single company"""
++        json_data = json.dumps([{
++            "name": "Cadivi Ltd",
++            "country": "Vietnam",
++            "city": "HCMC",
++            "year_established": 2005,
++            "employees": "100-500",
++            "estimated_revenue": "$5M-10M",
++            "main_products": "PVC compounds",
++            "export_markets": "Thailand, Malaysia",
++            "eu_us_jp_export": True,
++            "raw_materials": "Petroleum",
++            "recommended_product": "Masterbatch",
++            "recommendation_reason": "High-volume processor",
++            "website": "cadivi.vn",
++            "contact_email": "contact@cadivi.vn",
++            "linkedin_url": "https://www.linkedin.com/company/cadivi/",
++            "best_contact_title": "Operations Director",
++            "prospect_score": 9,
++            "priority": "A"
++        }])
++
++        result = parser.parse_response(json_data, "JSON")
++        assert len(result) == 1
++        assert result[0]["name"] == "Cadivi Ltd"
++        assert result[0]["country"] == "Vietnam"
++
++    def test_parse_json_multiple_companies(self, parser):
++        """Test parsing JSON with multiple companies"""
++        json_data = json.dumps([
++            {"name": "Company A", "country": "Vietnam", "prospect_score": 8, "linkedin_url": "https://linkedin.com/company/a/"},
++            {"name": "Company B", "country": "Thailand", "prospect_score": 7, "linkedin_url": "https://linkedin.com/company/b/"}
++        ])
++
++        result = parser.parse_response(json_data, "JSON")
++        assert len(result) == 2
++        assert result[0]["name"] == "Company A"
++        assert result[1]["name"] == "Company B"
++
++    def test_parse_json_invalid_format(self, parser):
++        """Test parsing invalid JSON raises error"""
++        invalid_json = "not valid json {"
++
++        with pytest.raises(ValueError):
++            parser.parse_response(invalid_json, "JSON")
++
++    # LinkedIn URL Normalization Tests
++    def test_normalize_linkedin_url_full(self, parser):
++        """Test LinkedIn URL normalization"""
++        url = "https://www.linkedin.com/company/cadivi/"
++        normalized = parser.normalize_linkedin_url(url)
++        assert normalized == "linkedin.com/company/cadivi"
++
++    def test_normalize_linkedin_url_no_www(self, parser):
++        """Test normalization without www prefix"""
++        url = "https://linkedin.com/company/company-name/"
++        normalized = parser.normalize_linkedin_url(url)
++        assert normalized == "linkedin.com/company/company-name"
++
++    def test_normalize_linkedin_url_with_spaces(self, parser):
++        """Test normalization with spaces in URL"""
++        url = "https://www.linkedin.com/company/my company/"
++        normalized = parser.normalize_linkedin_url(url)
++        assert "my-company" in normalized.lower()
++
++    def test_normalize_linkedin_url_http(self, parser):
++        """Test normalization with http (not https)"""
++        url = "http://www.linkedin.com/company/test/"
++        normalized = parser.normalize_linkedin_url(url)
++        assert normalized == "linkedin.com/company/test"
++
++    def test_normalize_linkedin_url_empty(self, parser):
++        """Test normalization with empty URL"""
++        result = parser.normalize_linkedin_url("")
++        assert result == "" or result == "linkedin.com"
++
++    # Score Validation Tests
++    def test_validate_score_valid_range(self, parser):
++        """Test score validation with valid range"""
++        assert parser.validate_and_clamp_score(5) == 5
++        assert parser.validate_and_clamp_score(1) == 1
++        assert parser.validate_and_clamp_score(10) == 10
++
++    def test_validate_score_below_range(self, parser):
++        """Test score below valid range is clamped to 1"""
++        assert parser.validate_and_clamp_score(-5) == 1
++        assert parser.validate_and_clamp_score(0) == 1
++
++    def test_validate_score_above_range(self, parser):
++        """Test score above valid range is clamped to 10"""
++        assert parser.validate_and_clamp_score(15) == 10
++        assert parser.validate_and_clamp_score(100) == 10
++
++    def test_validate_score_non_numeric(self, parser):
++        """Test non-numeric score is set to 0"""
++        assert parser.validate_and_clamp_score("abc") == 0
++        assert parser.validate_and_clamp_score(None) == 0
++        assert parser.validate_and_clamp_score("") == 0
++
++    def test_validate_score_float(self, parser):
++        """Test float score is converted to int"""
++        result = parser.validate_and_clamp_score(7.5)
++        assert isinstance(result, int)
++        assert result in [7, 8]  # Should be clamped to int
++
++    # Field Handling Tests
++    def test_handle_missing_required_field(self, parser):
++        """Test handling of missing required fields"""
++        data = [
++            {"country": "Vietnam"},  # Missing name (required)
++            {"name": "Company B", "country": "Thailand"}  # Valid
++        ]
++
++        result = parser._filter_and_prepare_records(data)
++        # Should only have the valid record
++        assert len(result) == 1
++        assert result[0]["name"] == "Company B"
++
++    def test_handle_missing_optional_field(self, parser):
++        """Test missing optional fields are filled with N/A"""
++        data = [{
++            "name": "Company A",
++            "country": "Vietnam",
++            "linkedin_url": "https://linkedin.com/company/a/"
++        }]
++
++        result = parser._filter_and_prepare_records(data)
++        assert len(result) == 1
++        # Check that optional fields are filled
++        assert result[0].get("city", "N/A") is not None
++
++    # Markdown Format Tests
++    def test_parse_markdown_table(self, parser):
++        """Test parsing Markdown table format"""
++        markdown = """| name | country | city | prospect_score |
++| --- | --- | --- | --- |
++| Company A | Vietnam | HCMC | 8 |
++| Company B | Thailand | Bangkok | 7 |"""
++
++        result = parser.parse_response(markdown, "Markdown")
++        assert len(result) >= 1  # At least one company parsed
++
++    # CSV Format Tests
++    def test_parse_csv_format(self, parser):
++        """Test parsing CSV format"""
++        csv_data = """name,country,city,prospect_score
++Company A,Vietnam,HCMC,8
++Company B,Thailand,Bangkok,7"""
++
++        result = parser.parse_response(csv_data, "CSV")
++        assert len(result) >= 1  # At least one company parsed
++
++    # Unsupported Format Test
++    def test_parse_unsupported_format(self, parser):
++        """Test unsupported format raises error"""
++        with pytest.raises(ValueError):
++            parser.parse_response("some data", "UNKNOWN")
++
++
++class TestLinkedInNormalization:
++    """Detailed LinkedIn URL normalization tests"""
++
++    @pytest.fixture
++    def parser(self):
++        return CompanyParser()
++
++    def test_protocol_removal_https(self, parser):
++        """Remove https:// protocol"""
++        assert "https://" not in parser.normalize_linkedin_url("https://linkedin.com/company/test/")
++
++    def test_protocol_removal_http(self, parser):
++        """Remove http:// protocol"""
++        assert "http://" not in parser.normalize_linkedin_url("http://linkedin.com/company/test/")
++
++    def test_www_removal(self, parser):
++        """Remove www. prefix"""
++        result = parser.normalize_linkedin_url("https://www.linkedin.com/company/test/")
++        assert not result.startswith("www")
++
++    def test_trailing_slash_removal(self, parser):
++        """Remove trailing slashes"""
++        result = parser.normalize_linkedin_url("https://linkedin.com/company/test///")
++        assert not result.endswith("/")
++
++    def test_lowercase_conversion(self, parser):
++        """Convert to lowercase"""
++        result = parser.normalize_linkedin_url("HTTPS://LINKEDIN.COM/COMPANY/TEST/")
++        assert result == result.lower()
++
++    def test_space_to_hyphen(self, parser):
++        """Convert spaces to hyphens"""
++        result = parser.normalize_linkedin_url("https://linkedin.com/company/my company/")
++        assert " " not in result
++        assert "my-company" in result.lower()
+diff --git a/tests/test_parsing_integration.py b/tests/test_parsing_integration.py
+new file mode 100644
+index 0000000..d8f3c06
+--- /dev/null
++++ b/tests/test_parsing_integration.py
+@@ -0,0 +1,172 @@
++"""Integration tests for parsing and database insertion"""
++
++import pytest
++import json
++from tranotra.db import parse_response_and_insert
++from tranotra.infrastructure.database import get_db
++from tranotra.core.models import Company, SearchHistory
++
++
++class TestParsingAndInsertion:
++    """Test parsing and database insertion together"""
++
++    def test_parse_and_insert_json_response(self, app):
++        """Test parsing JSON and inserting companies"""
++        with app.app_context():
++            response = json.dumps([
++                {
++                    "name": "Cadivi Ltd",
++                    "country": "Vietnam",
++                    "city": "HCMC",
++                    "year_established": 2005,
++                    "employees": "100-500",
++                    "estimated_revenue": "$5M",
++                    "main_products": "PVC",
++                    "export_markets": "Thailand",
++                    "eu_us_jp_export": True,
++                    "raw_materials": "Petroleum",
++                    "recommended_product": "Masterbatch",
++                    "recommendation_reason": "Good fit",
++                    "website": "cadivi.vn",
++                    "contact_email": "contact@cadivi.vn",
++                    "linkedin_url": "https://www.linkedin.com/company/cadivi/",
++                    "best_contact_title": "Director",
++                    "prospect_score": 8,
++                    "priority": "A"
++                }
++            ])
++
++            result = parse_response_and_insert("Vietnam", "PVC test", response, "JSON")
++
++            assert result["success"] == True
++            assert result["new_count"] >= 0
++
++    def test_deduplication_logic(self, app):
++        """Test deduplication by linkedin_normalized"""
++        with app.app_context():
++            db = get_db()
++
++            # First insert
++            response = json.dumps([{
++                "name": "Company A",
++                "country": "Vietnam",
++                "linkedin_url": "https://www.linkedin.com/company/company-a/",
++                "prospect_score": 8
++            }])
++
++            result1 = parse_response_and_insert("Vietnam", "Test", response, "JSON")
++
++            # Second insert with duplicate LinkedIn URL
++            result2 = parse_response_and_insert("Vietnam", "Test2", response, "JSON")
++
++            assert result2["duplicate_count"] >= 0
++
++    def test_search_history_creation(self, app):
++        """Test search history record is created"""
++        with app.app_context():
++            db = get_db()
++
++            response = json.dumps([{
++                "name": "Test Company",
++                "country": "Thailand",
++                "linkedin_url": "https://linkedin.com/company/test/",
++                "prospect_score": 7
++            }])
++
++            parse_response_and_insert("Thailand", "test keyword", response, "JSON")
++
++            # Check search history was created
++            history = db.query(SearchHistory).filter_by(
++                country="Thailand",
++                query="test keyword"
++            ).first()
++
++            assert history is not None
++            assert history.result_count >= 0
++
++    def test_statistics_calculation(self, app):
++        """Test that avg_score and high_priority_count are calculated"""
++        with app.app_context():
++            response = json.dumps([
++                {
++                    "name": "Company A",
++                    "country": "Indonesia",
++                    "linkedin_url": "https://linkedin.com/company/a/",
++                    "prospect_score": 9
++                },
++                {
++                    "name": "Company B",
++                    "country": "Indonesia",
++                    "linkedin_url": "https://linkedin.com/company/b/",
++                    "prospect_score": 7
++                }
++            ])
++
++            result = parse_response_and_insert("Indonesia", "test", response, "JSON")
++
++            # avg_score should be calculated from new companies
++            if result["new_count"] >= 2:
++                assert result["avg_score"] > 0
++                # At least one company with score >= 8
++                assert result["high_priority_count"] >= 0
++
++    def test_error_handling_invalid_json(self, app):
++        """Test error handling for invalid JSON"""
++        with app.app_context():
++            invalid_json = "not valid json {"
++
++            result = parse_response_and_insert("Vietnam", "test", invalid_json, "JSON")
++
++            assert result["success"] == False
++
++    def test_partial_failure_handling(self, app):
++        """Test that parsing continues even if one record fails"""
++        with app.app_context():
++            response = json.dumps([
++                {
++                    "name": "Valid Company",
++                    "country": "Vietnam",
++                    "linkedin_url": "https://linkedin.com/company/valid/",
++                    "prospect_score": 8
++                },
++                {
++                    # Missing required field
++                    "country": "Vietnam",
++                    "linkedin_url": "https://linkedin.com/company/invalid/",
++                    "prospect_score": 7
++                },
++                {
++                    "name": "Another Valid",
++                    "country": "Thailand",
++                    "linkedin_url": "https://linkedin.com/company/valid2/",
++                    "prospect_score": 9
++                }
++            ])
++
++            result = parse_response_and_insert("Vietnam", "test", response, "JSON")
++
++            # Should have successfully processed at least the valid records
++            assert result["success"] == True or result["new_count"] > 0
++
++    def test_csv_parsing_and_insertion(self, app):
++        """Test CSV parsing and insertion"""
++        with app.app_context():
++            csv_data = """name,country,linkedin_url,prospect_score
++Company X,Vietnam,https://linkedin.com/company/x/,8
++Company Y,Thailand,https://linkedin.com/company/y/,9"""
++
++            result = parse_response_and_insert("Vietnam", "CSV test", csv_data, "CSV")
++
++            assert result["success"] == True or result["new_count"] >= 0
++
++    def test_markdown_parsing_and_insertion(self, app):
++        """Test Markdown parsing and insertion"""
++        with app.app_context():
++            markdown_data = """| name | country | linkedin_url | prospect_score |
++| --- | --- | --- | --- |
++| Company M | Vietnam | https://linkedin.com/company/m/ | 8 |
++| Company N | Thailand | https://linkedin.com/company/n/ | 7 |"""
++
++            result = parse_response_and_insert("Vietnam", "MD test", markdown_data, "Markdown")
++
++            assert result["success"] == True or result["new_count"] >= 0

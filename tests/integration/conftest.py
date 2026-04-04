@@ -1,4 +1,4 @@
-"""Shared pytest configuration and fixtures"""
+"""Integration test pytest configuration and fixtures"""
 
 import os
 import sys
@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 # Add src directory to Python path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 # Set testing environment
 os.environ["FLASK_ENV"] = "testing"
@@ -16,7 +16,7 @@ os.environ["GEMINI_API_KEY"] = "test-key-dummy-value"
 
 @pytest.fixture
 def app():
-    """Create Flask app for testing
+    """Create Flask app for integration testing
 
     Yields:
         Flask: Test application instance
@@ -29,39 +29,8 @@ def app():
 
 
 @pytest.fixture
-def client(app):
-    """Create Flask test client
-
-    Args:
-        app: Flask application fixture
-
-    Returns:
-        FlaskClient: Test client for making requests
-    """
-    # Fix werkzeug version issue
-    import werkzeug
-    if not hasattr(werkzeug, '__version__'):
-        werkzeug.__version__ = '3.0.0'
-
-    return app.test_client()
-
-
-@pytest.fixture
-def runner(app):
-    """Create CLI test runner
-
-    Args:
-        app: Flask application fixture
-
-    Returns:
-        FlaskCliRunner: CLI test runner
-    """
-    return app.test_cli_runner()
-
-
-@pytest.fixture
 def db_session(app):
-    """Create database session for testing
+    """Create database session for integration testing
 
     Args:
         app: Flask application fixture
@@ -83,7 +52,7 @@ def db_session(app):
 
 @pytest.fixture
 def sample_companies(db_session):
-    """Create sample companies for testing
+    """Create sample companies for integration testing
 
     Args:
         db_session: Database session fixture
@@ -192,24 +161,6 @@ def sample_companies_many(db_session):
         db_session.rollback()
     finally:
         db_session.expunge_all()
-
-
-@pytest.fixture
-def clear_cache():
-    """Clear search results cache"""
-    from tranotra.routes import results_cache
-    results_cache.clear()
-    yield
-    results_cache.clear()
-
-
-@pytest.fixture(autouse=True)
-def cleanup_cache_after_test():
-    """Auto-cleanup cache after each test to prevent state leakage between tests"""
-    from tranotra.routes import results_cache
-    yield
-    # Cleanup after test
-    results_cache.clear()
 
 
 @pytest.fixture

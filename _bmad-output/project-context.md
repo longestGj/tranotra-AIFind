@@ -55,16 +55,30 @@ tranotra-leads/
 │   ├── gemini_client.py    # Gemini API wrapper
 │   ├── parser.py           # Response parsing (JSON/CSV/Markdown)
 │   ├── main.py             # Flask app + routes
+│   ├── routes.py           # Standalone routes module
 │   └── __init__.py
 ├── tests/
-│   ├── conftest.py         # Shared pytest fixtures
-│   ├── test_config.py
-│   ├── test_db.py
-│   ├── test_gemini_client.py
-│   ├── test_main.py
-│   ├── test_parser.py
-│   ├── test_prompts.py
-│   └── test_api_integration.py
+│   ├── unit/
+│   │   ├── conftest.py     # Unit test fixtures (app only)
+│   │   ├── test_config.py
+│   │   ├── test_format_detection.py
+│   │   ├── test_gemini_client.py
+│   │   ├── test_main.py
+│   │   ├── test_parser.py
+│   │   └── test_routes.py
+│   ├── integration/
+│   │   ├── conftest.py     # Integration test fixtures (db_session, sample data)
+│   │   ├── test_database.py
+│   │   ├── test_parsing_integration.py
+│   │   ├── test_statistics.py
+│   │   └── __init__.py
+│   ├── e2e/
+│   │   ├── conftest.py     # E2E test fixtures (client, runner, cache)
+│   │   ├── test_search_api.py
+│   │   ├── test_search_form.py
+│   │   ├── test_search_results_api.py
+│   │   └── __init__.py
+│   └── __init__.py
 ├── templates/
 │   └── index.html          # Flask template
 ├── static/                 # CSS/JS assets
@@ -107,20 +121,52 @@ tranotra-leads/
 - **Rule:** All endpoint responses must include error handling with HTTP status codes
 - **Why:** Client expects consistent error messages and status codes
 
-### 5. Testing Requirements
-- **Rule:** 100% test coverage goal - tests make development safe
+### 5. Testing Architecture & Layer Separation
+- **Rule:** Tests are organized into three independent layers (unit, integration, E2E) in separate directories with isolated `conftest.py` files
+- **Pattern:**
+  - **Unit Tests** (`tests/unit/`) — Test individual functions/classes in isolation
+    - Fixtures: `app` only (Flask application instance)
+    - No database access, no external API calls
+    - Fast, deterministic, run first in CI/CD
+    - Examples: `test_parser.py`, `test_config.py`, `test_format_detection.py`
+  
+  - **Integration Tests** (`tests/integration/`) — Test database operations and cross-module interactions
+    - Fixtures: `db_session`, `sample_companies`, `sample_companies_many`, `sample_companies_with_history`
+    - Database operations are real (SQLite test database)
+    - No Flask test client, no API endpoint testing
+    - Examples: `test_database.py`, `test_parsing_integration.py`, `test_statistics.py`
+  
+  - **E2E Tests** (`tests/e2e/`) — Test complete workflows through API endpoints
+    - Fixtures: `client` (Flask test client), `runner` (CLI runner), `clear_cache`, `cleanup_cache_after_test`
+    - Full request/response cycle through Flask routes
+    - Database operations happen via API calls
+    - Examples: `test_search_api.py`, `test_search_form.py`, `test_search_results_api.py`
+
+- **Why:** 
+  - Prevents test interdependencies and fixture conflicts
+  - Allows layer-specific optimizations (unit tests run fast; integration tests validate data contracts)
+  - Clear separation enables running each layer independently: `pytest tests/unit/`, `pytest tests/integration/`, `pytest tests/e2e/`
+  - Reduces debugging complexity (failures clearly indicate which layer broke)
+
+- **Categorization Guidelines:**
+  - Does it test a single function/class with mocked dependencies? → **Unit test**
+  - Does it test database operations or cross-module logic without API endpoints? → **Integration test**
+  - Does it test an HTTP endpoint or complete user workflow? → **E2E test**
+
+### 6. Testing Requirements (100% Coverage Goal)
+- **Rule:** All public functions and API endpoints must have test coverage
 - **Pattern:** 
-  - `conftest.py` provides shared fixtures (DB session, mock Gemini responses)
-  - Test files mirror `src/` structure: `test_<module_name>.py`
-  - Use `pytest-mock` for Gemini API mocking
+  - Use `pytest-cov` to measure coverage
+  - Mock external APIs (Gemini) in unit tests with `pytest-mock`
+  - Integration tests use real database for validation
 - **Why:** Safety and confidence when refactoring or adding features
 
-### 6. Logging & Debugging
+### 7. Logging & Debugging
 - **Rule:** Use Python `logging` module with level set via `LOG_LEVEL` env var
 - **Pattern:** Each module logs with `logger = logging.getLogger(__name__)`
 - **Why:** Production debugging and error tracking
 
-### 7. Code Organization
+### 8. Code Organization
 - **Rule:** Separate concerns into `pipeline/` modules (discover, profile, contacts, score, draft_email)
 - **Rule:** Flask routes in `main.py` stay thin; logic in `gemini_client.py` and `parser.py`
 - **Why:** Maintainability and clear responsibility boundaries
