@@ -527,18 +527,21 @@ body {
 .table-view {
     background: white;
     border-radius: 8px;
-    overflow: hidden;
+    overflow-x: auto;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .companies-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 800px;
 }
 
 .companies-table thead {
     background-color: #f5f5f5;
     border-bottom: 2px solid #e0e0e0;
+    position: sticky;
+    top: 0;
 }
 
 .companies-table th {
@@ -547,12 +550,25 @@ body {
     font-weight: 600;
     font-size: 13px;
     color: #333;
+    user-select: none;
+}
+
+/* Sortable header styling */
+.companies-table th.sortable-header {
+    background-color: #f5f5f5;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.companies-table th.sortable-header:hover {
+    background-color: #efefef;
 }
 
 .companies-table td {
     padding: 12px 15px;
     border-bottom: 1px solid #e0e0e0;
     font-size: 13px;
+    word-break: break-word;
 }
 
 .companies-table tbody tr {
@@ -563,8 +579,17 @@ body {
     background-color: #f9f9f9;
 }
 
+.companies-table tbody tr.odd {
+    background-color: white;
+}
+
 .companies-table tbody tr:hover {
     background-color: #f0f7ff;
+}
+
+.companies-table tbody tr.selected {
+    background-color: #e3f2fd;
+    border-left: 3px solid #1a73e8;
 }
 
 .companies-table a {
@@ -576,17 +601,36 @@ body {
     text-decoration: underline;
 }
 
+.row-number {
+    width: 40px;
+    text-align: center;
+    color: #999;
+}
+
+.company-name-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.score-cell {
+    font-weight: 600;
+    color: #1a73e8;
+}
+
 /* Pagination */
 .pagination {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
+    gap: 5px;
     margin-top: 30px;
     padding: 20px;
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex-wrap: wrap;
 }
 
 .page-btn {
@@ -611,10 +655,101 @@ body {
     cursor: not-allowed;
 }
 
+.page-numbers {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.page-number {
+    padding: 8px 12px;
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    min-width: 40px;
+    text-align: center;
+}
+
+.page-number:hover {
+    background-color: #e0e0e0;
+    border-color: #999;
+}
+
+.page-number.active {
+    background-color: #1a73e8;
+    color: white;
+    border-color: #1a73e8;
+}
+
+.page-ellipsis {
+    padding: 8px 4px;
+    color: #999;
+    font-size: 13px;
+}
+
+/* Pagination Footer */
+.pagination-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    padding: 15px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
 .page-info {
     font-size: 14px;
     color: #666;
     font-weight: 600;
+}
+
+.jump-to-page {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.jump-to-page input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 100px;
+    text-align: center;
+}
+
+.jump-to-page input:focus {
+    outline: none;
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+.btn-jump {
+    padding: 8px 16px;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-jump:hover {
+    background-color: #1565c0;
+}
+
+.btn-jump:active {
+    background-color: #0d47a1;
 }
 
 /* Cache Notification */
@@ -723,6 +858,18 @@ body {
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+    /* Hide Website column on tablet */
+    .companies-table th:last-child,
+    .companies-table td:last-child {
+        display: none;
+    }
+
+    .companies-table {
+        min-width: 700px;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 15px;
@@ -756,6 +903,7 @@ body {
 
     .companies-table {
         font-size: 12px;
+        min-width: 600px;
     }
 
     .companies-table th,
@@ -763,9 +911,22 @@ body {
         padding: 10px;
     }
 
+    /* Hide LinkedIn on mobile */
+    .companies-table th:nth-child(7),
+    .companies-table td:nth-child(7) {
+        display: none;
+    }
+
+    /* Hide Website on mobile */
+    .companies-table th:last-child,
+    .companies-table td:last-child {
+        display: none;
+    }
+
     .pagination {
         flex-direction: column;
         gap: 10px;
+        flex-wrap: wrap;
     }
 
     .view-btn {
@@ -774,6 +935,20 @@ body {
 
     .stats-card {
         grid-template-columns: 1fr;
+    }
+
+    /* Mobile table note */
+    .table-view::before {
+        content: "此视图在手机上显示可能不清晰，推荐使用卡片视图";
+        display: block;
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #856404;
+        padding: 10px 15px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        font-size: 12px;
+        text-align: center;
     }
 }
 
@@ -784,6 +959,7 @@ body {
 
     .companies-table {
         font-size: 11px;
+        min-width: 500px;
     }
 
     .companies-table th,
@@ -802,5 +978,24 @@ body {
     .page-btn {
         padding: 8px 15px;
         font-size: 12px;
+    }
+
+    .page-number {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-width: 36px;
+    }
+
+    .pagination-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .jump-to-page {
+        justify-content: space-between;
+    }
+
+    .jump-to-page input {
+        flex: 1;
     }
 }

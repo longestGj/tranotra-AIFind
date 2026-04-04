@@ -15,7 +15,10 @@ let currentState = {
     newCount: 0,
     duplicateCount: 0,
     avgScore: 0,
-    isFetching: false  // Prevent duplicate requests
+    isFetching: false,  // Prevent duplicate requests
+    // Table view state
+    sortColumn: 'prospect_score',
+    sortDirection: 'desc'  // 'asc' or 'desc'
 };
 
 /**
@@ -356,7 +359,7 @@ function attachCardActions(cardElement, company) {
 }
 
 /**
- * Render table view
+ * Render table view with sorting
  */
 function renderTableView() {
     const container = document.getElementById('results-container');
@@ -365,6 +368,17 @@ function renderTableView() {
     container.setAttribute('role', 'region');
     container.setAttribute('aria-label', `搜索结果表格，共 ${currentState.companies.length} 家公司`);
 
+    // Load sort preference from localStorage
+    const sortPref = localStorage.getItem('tranotra_leads_table_sort');
+    if (sortPref) {
+        const pref = JSON.parse(sortPref);
+        currentState.sortColumn = pref.column || 'prospect_score';
+        currentState.sortDirection = pref.direction || 'desc';
+    }
+
+    // Sort companies based on current preferences
+    const sortedCompanies = sortTableData(currentState.companies, currentState.sortColumn, currentState.sortDirection);
+
     const table = document.createElement('table');
     table.className = 'companies-table';
     table.setAttribute('role', 'table');
@@ -372,40 +386,130 @@ function renderTableView() {
 
     // Header
     const thead = document.createElement('thead');
-    thead.innerHTML = `
-        <tr>
-            <th>#</th>
-            <th>公司名称</th>
-            <th>国家</th>
-            <th>评分</th>
-            <th>优先级</th>
-            <th>邮箱</th>
-            <th>LinkedIn</th>
-            <th>网站</th>
-        </tr>
-    `;
+    const headerRow = document.createElement('tr');
+
+    const columns = [
+        { key: null, label: '#', sortable: false },
+        { key: 'name', label: '公司名称', sortable: true },
+        { key: 'country', label: '国家', sortable: true },
+        { key: 'prospect_score', label: '评分', sortable: true },
+        { key: 'priority', label: '优先级', sortable: true },
+        { key: 'contact_email', label: '邮箱', sortable: false },
+        { key: 'linkedin_url', label: 'LinkedIn', sortable: false },
+        { key: 'website', label: '网站', sortable: true }
+    ];
+
+    columns.forEach(col => {
+        const th = document.createElement('th');
+        if (col.sortable) {
+            th.className = 'sortable-header';
+            th.setAttribute('data-sort-column', col.key);
+            th.style.cursor = 'pointer';
+
+            // Add sort indicator if this is the current sort column
+            let indicator = '';
+            if (currentState.sortColumn === col.key) {
+                indicator = currentState.sortDirection === 'asc' ? ' ↑' : ' ↓';
+            }
+            th.innerHTML = col.label + indicator;
+            th.addEventListener('click', () => handleTableHeaderClick(col.key));
+        } else {
+            th.innerHTML = col.label;
+        }
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    // Body
+    // Body with sorted data
     const tbody = document.createElement('tbody');
-    currentState.companies.forEach((company, index) => {
+    sortedCompanies.forEach((company, index) => {
         const row = document.createElement('tr');
-        row.className = index % 2 === 0 ? 'even' : 'odd';
-        row.innerHTML = `
-            <td>${index + 1}</td>
-            <td title="${escapeHtml(company.name)}">${escapeHtml(company.name)}</td>
-            <td>${escapeHtml(company.country || 'N/A')}</td>
-            <td>${company.prospect_score || 'N/A'}</td>
-            <td><span class="priority-badge priority-${sanitizeCssClass(company.priority || 'LOW')}">${escapeHtml(company.priority || 'N/A')}</span></td>
-            <td><a href="${sanitizeEmail(company.contact_email) ? 'mailto:' + sanitizeEmail(company.contact_email) : '#'}">${escapeHtml(company.contact_email || 'N/A')}</a></td>
-            <td><a href="${sanitizeUrl(company.linkedin_url)}" target="_blank">LinkedIn</a></td>
-            <td><a href="${sanitizeUrl(company.website)}" target="_blank">Website</a></td>
-        `;
+        row.className = 'data-row ' + (index % 2 === 0 ? 'even' : 'odd');
+        row.setAttribute('data-company-id', company.id);
+
+        const cells = [
+            `<td class="row-number">${index + 1}</td>`,
+            `<td class="company-name-cell" title="${escapeHtml(company.name)}">${escapeHtml(truncateText(company.name, 30))}</td>`,
+            `<td>${escapeHtml(company.country || 'N/A')}</td>`,
+            `<td class="score-cell">${company.prospect_score || 'N/A'}</td>`,
+            `<td><span class="priority-badge priority-${sanitizeCssClass(company.priority || 'LOW')}">${escapeHtml(company.priority || 'N/A')}</span></td>`,
+            `<td><a href="${sanitizeEmail(company.contact_email) ? 'mailto:' + sanitizeEmail(company.contact_email) : '#'}" class="table-link">${escapeHtml(company.contact_email || 'N/A')}</a></td>`,
+            `<td><a href="${sanitizeUrl(company.linkedin_url)}" target="_blank" rel="noopener noreferrer" class="table-link">LinkedIn</a></td>`,
+            `<td class="website-column"><a href="${sanitizeUrl(company.website)}" target="_blank" rel="noopener noreferrer" class="table-link">Website</a></td>`
+        ];
+
+        row.innerHTML = cells.join('');
+
+        // Add click handler for row selection
+        row.addEventListener('click', () => {
+            document.querySelectorAll('.data-row').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+        });
+
         tbody.appendChild(row);
     });
     table.appendChild(tbody);
 
     container.appendChild(table);
+}
+
+/**
+ * Sort table data
+ */
+function sortTableData(companies, column, direction) {
+    const sorted = [...companies];
+
+    sorted.sort((a, b) => {
+        let aVal = a[column];
+        let bVal = b[column];
+
+        // Handle null/undefined values
+        if (aVal == null) aVal = '';
+        if (bVal == null) bVal = '';
+
+        // Convert to comparable values
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+
+        if (direction === 'asc') {
+            return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        } else {
+            return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+        }
+    });
+
+    return sorted;
+}
+
+/**
+ * Handle table header click for sorting
+ */
+function handleTableHeaderClick(column) {
+    const newDirection = (currentState.sortColumn === column && currentState.sortDirection === 'desc') ? 'asc' : 'desc';
+    currentState.sortColumn = column;
+    currentState.sortDirection = newDirection;
+
+    // Save preference to localStorage
+    localStorage.setItem('tranotra_leads_table_sort', JSON.stringify({
+        column: currentState.sortColumn,
+        direction: currentState.sortDirection
+    }));
+
+    // Re-render table
+    renderTableView();
+}
+
+/**
+ * Truncate text to max length
+ */
+function truncateText(text, maxLength) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
 }
 
 /**
@@ -520,13 +624,63 @@ function switchView(view) {
  */
 function updatePagination() {
     const pageInfo = document.getElementById('page-info');
-    pageInfo.textContent = `第 ${currentState.page} 页，共 ${currentState.totalPages} 页`;
-
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
+    const pageNumbersContainer = document.getElementById('page-numbers');
+    const jumpInput = document.getElementById('jump-page-input');
 
+    // Update page info text
+    const totalRecords = (currentState.totalPages - 1) * currentState.perPage + currentState.companies.length;
+    const startRecord = (currentState.page - 1) * currentState.perPage + 1;
+    const endRecord = Math.min(currentState.page * currentState.perPage, totalRecords);
+    pageInfo.textContent = `显示 ${startRecord}-${endRecord} / ${totalRecords} 条记录`;
+
+    // Update Previous/Next buttons
     prevBtn.disabled = currentState.page <= 1;
     nextBtn.disabled = currentState.page >= currentState.totalPages;
+
+    // Generate page numbers
+    if (pageNumbersContainer) {
+        pageNumbersContainer.innerHTML = '';
+
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentState.page - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(currentState.totalPages, startPage + maxPagesToShow - 1);
+
+        if (endPage - startPage + 1 < maxPagesToShow) {
+            startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+
+        // Add ellipsis if needed at the beginning
+        if (startPage > 1) {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'page-ellipsis';
+            ellipsis.textContent = '...';
+            pageNumbersContainer.appendChild(ellipsis);
+        }
+
+        // Add page number buttons
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = `page-number ${i === currentState.page ? 'active' : ''}`;
+            pageBtn.textContent = i;
+            pageBtn.onclick = () => goToPage(i);
+            pageNumbersContainer.appendChild(pageBtn);
+        }
+
+        // Add ellipsis if needed at the end
+        if (endPage < currentState.totalPages) {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'page-ellipsis';
+            ellipsis.textContent = '...';
+            pageNumbersContainer.appendChild(ellipsis);
+        }
+    }
+
+    // Update jump input max value
+    if (jumpInput) {
+        jumpInput.max = currentState.totalPages;
+    }
 }
 
 /**
@@ -550,6 +704,34 @@ function nextPage() {
         updateUrl();
         fetchResults();
         window.scrollTo(0, 0);
+    }
+}
+
+/**
+ * Go to specific page
+ */
+function goToPage(pageNum) {
+    if (pageNum >= 1 && pageNum <= currentState.totalPages) {
+        currentState.page = pageNum;
+        updateUrl();
+        fetchResults();
+        window.scrollTo(0, 0);
+    }
+}
+
+/**
+ * Jump to page via input field
+ */
+function jumpToPage() {
+    const input = document.getElementById('jump-page-input');
+    const pageNum = parseInt(input.value, 10);
+
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= currentState.totalPages) {
+        goToPage(pageNum);
+        input.value = '';
+    } else {
+        showToast('请输入 1-' + currentState.totalPages + ' 之间的页码');
+        input.value = '';
     }
 }
 

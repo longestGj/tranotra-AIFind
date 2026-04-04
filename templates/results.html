@@ -64,8 +64,19 @@
         <!-- Pagination -->
         <div class="pagination" id="pagination">
             <button class="page-btn prev-btn" id="prev-btn" onclick="previousPage()">← 上一页</button>
-            <span class="page-info" id="page-info">第 1 页</span>
+            <div class="page-numbers" id="page-numbers">
+                <!-- Page numbers will be inserted here -->
+            </div>
             <button class="page-btn next-btn" id="next-btn" onclick="nextPage()">下一页 →</button>
+        </div>
+
+        <!-- Pagination Info & Jump -->
+        <div class="pagination-footer" id="pagination-footer">
+            <span class="page-info" id="page-info">第 1 页，共 0 页</span>
+            <div class="jump-to-page">
+                <input type="number" id="jump-page-input" placeholder="跳转到页码" min="1" max="1">
+                <button class="btn-jump" onclick="jumpToPage()">Go</button>
+            </div>
         </div>
     </div>
 
