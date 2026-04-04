@@ -477,7 +477,7 @@ def parse_response_and_insert(
                 result["avg_score"] = 0.0
                 result["high_priority_count"] = 0
 
-            # Create search history record
+            # Create search history record (must succeed or rollback all)
             total_count = len(parsed_companies)
             history_data = {
                 "country": country,
@@ -489,17 +489,14 @@ def parse_response_and_insert(
                 "high_priority_count": result["high_priority_count"]
             }
 
-            try:
-                insert_search_history(history_data)
-                logger.info(
-                    f"创建搜索历史: {country}/{query} "
-                    f"(新增{result['new_count']}, 重复{result['duplicate_count']})"
-                )
-            except Exception as e:
-                logger.error(f"Failed to insert search history: {e}")
-                result["error_count"] += 1
+            # Insert search history - any failure here will trigger rollback
+            insert_search_history(history_data)
+            logger.info(
+                f"创建搜索历史: {country}/{query} "
+                f"(新增{result['new_count']}, 重复{result['duplicate_count']})"
+            )
 
-            # Commit all changes
+            # Commit all changes (companies + search history)
             db.commit()
 
             # Build result message

@@ -509,3 +509,23 @@ except Exception as e:
 **Status:** Ready for Development  
 **Created:** 2026-04-04  
 **Next Step:** Run `dev-story` to implement Story 1-5
+
+---
+
+## Review Findings
+
+### Decision Needed
+✅ **已解决：** AC7 在本故事实现（重定向 + 进度提示）
+
+### Patches (7) ✅ 已修复
+- [x] [Review][Patch] AC2 违反：prospect_score 不应为必需字段 [parser.py:17]
+- [x] [Review][Patch] AC7 实现：添加重定向到结果页面和进度提示 [routes.py:79-142]
+- [x] [Review][Patch] AC10 违反：事务边界不完整，搜索历史失败无法回滚 [db.py:360-383]
+- [x] [Review][Patch] 过宽泛的异常捕获（混合 JSON、格式、IO 错误） [parser.py:53-64]
+- [x] [Review][Patch] LinkedIn URL 规范化缺少验证（规范化后 URL 可能为空） [parser.py:166-239]
+- [x] [Review][Patch] CSV 解析缺少编码处理（BOM、UTF-8） [parser.py:103-130]
+
+### Deferred (3)
+- [x] [Review][Defer] 国际化问题：错误消息硬编码中文 [db.py, routes.py] — deferred, pre-existing, 跨项目问题
+- [x] [Review][Defer] Markdown 表解析过于简单，不处理多行表头 [parser.py:301-319] — deferred, pre-existing, 非关键路径
+- [x] [Review][Defer] 日志级别不一致（缺少 warning 级别） [db.py] — deferred, pre-existing, 代码风格问题

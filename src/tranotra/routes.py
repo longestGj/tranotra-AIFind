@@ -154,6 +154,9 @@ def search_api() -> Tuple[Response, int]:
             400
         )
 
+    # Record start time for AC7: progress indicator if >3s
+    start_time = time.time()
+
     try:
         # Initialize Gemini
         api_key = current_app.config.get('GEMINI_API_KEY')
@@ -198,24 +201,30 @@ def search_api() -> Tuple[Response, int]:
             )
 
         # Success: data has been parsed and inserted
+        elapsed_time = time.time() - start_time
         logger.info(
             f"Search and parsing successful: "
             f"country={country}, format={fmt}, "
             f"new={parse_result['new_count']}, "
-            f"duplicates={parse_result['duplicate_count']}"
+            f"duplicates={parse_result['duplicate_count']}, "
+            f"elapsed={elapsed_time:.2f}s"
         )
 
-        return (
-            jsonify({
-                "status": "success",
-                "format": fmt,
-                "message": parse_result["message"],
-                "new_count": parse_result["new_count"],
-                "duplicate_count": parse_result["duplicate_count"],
-                "avg_score": parse_result["avg_score"]
-            }),
-            200
-        )
+        # AC7: Return success response with redirect hint and processing time
+        # Frontend will use this to redirect to results page (Story 2.1)
+        response_data = {
+            "status": "success",
+            "format": fmt,
+            "message": parse_result["message"],
+            "new_count": parse_result["new_count"],
+            "duplicate_count": parse_result["duplicate_count"],
+            "avg_score": parse_result["avg_score"],
+            "redirect_url": "/results",  # Story 2.1 results page
+            "processing_time_seconds": round(elapsed_time, 2),
+            "show_progress": elapsed_time > 3.0  # AC7: progress indicator if >3s
+        }
+
+        return (jsonify(response_data), 200)
 
     except GeminiTimeoutError as e:
         logger.error(f"Gemini timeout: {e}")

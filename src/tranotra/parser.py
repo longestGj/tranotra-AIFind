@@ -14,7 +14,7 @@ class CompanyParser:
     """Handles parsing, normalization, and validation of company data from various formats"""
 
     # Required fields that cannot be missing
-    REQUIRED_FIELDS = {"name", "country", "prospect_score"}
+    REQUIRED_FIELDS = {"name", "country"}
 
     # All expected company fields
     ALL_FIELDS = {
@@ -50,9 +50,18 @@ class CompanyParser:
                 return self._parse_csv(response)
             else:
                 raise ValueError(f"Unsupported format: {format}")
-        except Exception as e:
-            logger.error(f"Error parsing {format} response: {e}")
+        except ValueError as e:
+            # Re-raise validation errors (format not supported, malformed data)
+            logger.error(f"Validation error parsing {format} response: {e}")
             raise
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            # JSON parsing or encoding errors
+            logger.error(f"Format parsing error ({format}): {e}")
+            raise ValueError(f"Invalid {format} format: {str(e)}")
+        except Exception as e:
+            # Unexpected errors
+            logger.error(f"Unexpected error parsing {format} response: {e}")
+            raise ValueError(f"Parser error: {str(e)}")
 
     def _parse_json(self, response: str) -> List[Dict]:
         """Parse JSON array into company records"""
@@ -89,9 +98,26 @@ class CompanyParser:
         return companies
 
     def _parse_csv(self, response: str) -> List[Dict]:
-        """Parse CSV into company records"""
+        """Parse CSV into company records
+
+        Handles UTF-8 BOM and various delimiters (comma, tab, semicolon)
+        """
+        # Remove UTF-8 BOM if present
+        if response.startswith('\ufeff'):
+            response = response[1:]
+
         f = StringIO(response)
-        reader = csv.DictReader(f)
+
+        # Try to detect delimiter
+        first_line = response.split('\n')[0] if response else ""
+        if '\t' in first_line:
+            delimiter = '\t'
+        elif ';' in first_line:
+            delimiter = ';'
+        else:
+            delimiter = ','  # Default to comma
+
+        reader = csv.DictReader(f, delimiter=delimiter)
 
         companies = []
         if reader.fieldnames:
@@ -165,7 +191,7 @@ class CompanyParser:
             url: Raw LinkedIn URL
 
         Returns:
-            Normalized URL without protocol or www
+            Normalized URL without protocol or www, or empty string if invalid
         """
         if not url:
             return ""
@@ -188,6 +214,11 @@ class CompanyParser:
 
         # Replace spaces with hyphens
         url = url.replace(" ", "-")
+
+        # Validate: normalized URL should contain at least 'linkedin.com'
+        if not url or len(url) < 5:
+            logger.warning(f"Invalid LinkedIn URL after normalization: {url}")
+            return ""
 
         return url
 
