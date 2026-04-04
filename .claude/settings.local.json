@@ -114,7 +114,9 @@
       "Bash(nohup python:*)",
       "Bash(python)",
       "Bash(curl:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(sed:*)",
+      "Bash(mkdir:*)"
     ]
   }
 }

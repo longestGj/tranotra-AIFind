@@ -11,7 +11,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 # Set testing environment
 os.environ["FLASK_ENV"] = "testing"
-os.environ["GEMINI_API_KEY"] = "test-key-dummy-value"
+
+# Load API key from .env.development for real integration tests
+# If not found, use dummy key for unit tests that mock the API
+from dotenv import load_dotenv
+env_path = Path(__file__).parent.parent.parent / ".env.development"
+if env_path.exists():
+    load_dotenv(env_path)
+
+# Only override if not already set by .env.development
+if "GEMINI_API_KEY" not in os.environ or os.environ.get("GEMINI_API_KEY", "").startswith("test-"):
+    # For real Gemini API integration tests, load from .env.development
+    real_key = os.environ.get("GEMINI_API_KEY")
+    if not real_key or real_key.startswith("test-"):
+        # Fallback: use test-key-dummy-value
+        os.environ["GEMINI_API_KEY"] = "test-key-dummy-value"
 
 
 @pytest.fixture
