@@ -67,8 +67,11 @@ class CompanyParser:
         """Parse JSON array into company records
 
         Handles JSON wrapped in Markdown code blocks (```json ... ```)
-        and maps Gemini field names to internal field names
+        and maps Gemini field names to internal field names.
+        Tolerates malformed JSON with inline comments - extracts what it can.
         """
+        import re
+
         # Check if JSON is wrapped in Markdown code block
         json_str = response.strip()
 
@@ -84,8 +87,25 @@ class CompanyParser:
             if end > start:
                 json_str = json_str[start:end].strip()
 
-        # Parse JSON
-        data = json.loads(json_str)
+        # Clean up common malformed JSON patterns
+        # 1. Numbers with inline comments: "1996 (Joint Venture...)" -> "1996"
+        json_str = re.sub(r':\s*(\d+)\s+\([^)]*\)', r': \1', json_str)
+
+        # 2. Remove trailing commas before closing braces/brackets
+        json_str = re.sub(r',\s*([}\]])', r'\1', json_str)
+
+        # 3. Handle &amp; and other HTML entities
+        json_str = json_str.replace('&amp;', '&')
+
+        # Try to parse JSON
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            # If standard parsing fails, try line-by-line parsing as fallback
+            logger.warning(f"JSON parse error: {e}. Attempting line-by-line fallback parsing")
+            data = self._parse_json_fallback(json_str)
+            if not data:
+                raise ValueError(f"Failed to parse JSON even with fallback: {e}")
 
         if not isinstance(data, list):
             data = [data]
@@ -130,24 +150,173 @@ class CompanyParser:
 
         return companies
 
-    def _parse_markdown(self, response: str) -> List[Dict]:
-        """Parse Markdown table into company records"""
-        lines = response.strip().split("\n")
-        if len(lines) < 3:  # Need header, separator, and at least one row
-            return []
+    def _parse_json_fallback(self, json_str: str) -> List[Dict]:
+        """Fallback JSON parser for malformed JSON
 
-        # Extract header
-        header_line = lines[0]
-        headers = [h.strip() for h in header_line.split("|") if h.strip()]
+        Attempts to extract company objects by:
+        1. Finding {...} blocks (potential company objects)
+        2. Extracting key-value pairs from each block
+        3. Building dictionaries from parsed fields
+        """
+        import re
 
         companies = []
-        for line in lines[2:]:  # Skip header and separator
-            if line.strip() and "|" in line:
-                values = [v.strip() for v in line.split("|") if v.strip()]
-                if len(values) == len(headers):
-                    company = dict(zip(headers, values))
-                    companies.append(company)
 
+        # Find all {...} blocks that look like company objects
+        # Use regex to find balanced braces
+        brace_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+        blocks = re.findall(brace_pattern, json_str)
+
+        logger.info(f"Fallback parser found {len(blocks)} potential company objects")
+
+        for block in blocks:
+            # Extract key-value pairs using regex
+            # Pattern: "key": value (handles strings, numbers, booleans)
+            company = {}
+
+            # Find all "key": value pairs
+            pair_pattern = r'"([^"]+)"\s*:\s*([^,}]+)'
+            matches = re.findall(pair_pattern, block)
+
+            for key, value in matches:
+                # Clean up value
+                value = value.strip()
+
+                # Remove quotes if string
+                if value.startswith('"') and value.endswith('"'):
+                    value = value[1:-1]
+
+                # Try to convert to int if numeric
+                if value.isdigit():
+                    value = int(value)
+
+                company[key] = value
+
+            # Only keep blocks with at least company name
+            if company.get("Company Name (English)") or company.get("name"):
+                companies.append(company)
+
+        logger.info(f"Fallback parser extracted {len(companies)} companies")
+        return companies
+
+    def _parse_markdown(self, response: str) -> List[Dict]:
+        """Parse Markdown table into company records
+
+        Handles two formats:
+        1. Field-as-rows format: Fields in first column, companies in subsequent columns
+        2. Field-as-columns format: Fields as headers, one company per row
+        """
+        lines = response.strip().split("\n")
+        if not lines:
+            return []
+
+        # Find all lines that look like table rows (start with |)
+        table_lines = []
+        table_start = -1
+        for i, line in enumerate(lines):
+            if line.strip().startswith("|"):
+                if table_start == -1:
+                    table_start = i
+                table_lines.append((i, line))
+
+        if not table_lines:
+            logger.warning("No Markdown table found in response")
+            return []
+
+        # Get header line (first table line)
+        header_line = table_lines[0][1]
+        headers = [h.strip() for h in header_line.split("|")]
+        headers = [h for h in headers if h.strip()]
+
+        # Check if this is field-as-rows format (first column has "Field" or row numbers)
+        is_field_rows_format = (
+            len(headers) > 1 and
+            ("Field" in headers[0] or "Company Name" in headers[1] or "VINA" in headers[1])
+        )
+
+        logger.debug(f"Markdown table format: {'field-as-rows' if is_field_rows_format else 'field-as-columns'}")
+
+        companies = []
+
+        if is_field_rows_format:
+            # Field-as-rows format: companies are columns, fields are rows
+            # Extract company names from header (skip first column which is field labels)
+            company_names = headers[1:]  # Skip "Field" column
+
+            if len(company_names) == 0:
+                return []
+
+            # Field name mappings for Markdown tables
+            field_mapping = {
+                "Company Name (English)": "name",
+                "City/Province": "city",
+                "City\\Province": "city",
+                "Year Established": "year_established",
+                "Employees (approximate)": "employees",
+                "Estimated Annual Revenue": "estimated_revenue",
+                "Main Products": "main_products",
+                "Export Markets": "export_markets",
+                "Export to EU/USA/Japan?": "eu_us_jp_export",
+                "Export to EU\\USA\\Japan?": "eu_us_jp_export",
+                "Raw Materials": "raw_materials",
+                "Best Plasticizer for them": "recommended_product",
+                "Why that plasticizer": "recommendation_reason",
+                "Company Website": "website",
+                "Contact Email": "contact_email",
+                "LinkedIn Company Page URL": "linkedin_url",
+                "Best job title to contact": "best_contact_title",
+                "Prospect Score (1-10)": "prospect_score"
+            }
+
+            # Initialize company dicts
+            for i, company_name in enumerate(company_names):
+                companies.append({"name": company_name})
+
+            # Parse data rows (skip header and separator)
+            for row_idx in range(2, len(table_lines)):  # Skip header + separator
+                line = table_lines[row_idx][1]
+                cells = [c.strip() for c in line.split("|")]
+                cells = [c for c in cells if c]
+
+                if len(cells) < 2:
+                    continue
+
+                # First cell contains field name/label
+                field_label = cells[0]
+                # Clean up field label (remove markdown formatting)
+                field_label = field_label.replace("**", "").strip()
+
+                # Remove numbering prefix (e.g., "1. " or "2. ")
+                import re
+                field_label = re.sub(r'^\d+\.\s*', '', field_label)
+
+                # Map field name
+                internal_field = field_mapping.get(field_label, field_label.lower().replace(" ", "_"))
+
+                # Assign values to companies
+                for company_idx, value in enumerate(cells[1:]):
+                    if company_idx < len(companies):
+                        companies[company_idx][internal_field] = value
+
+        else:
+            # Field-as-columns format: one company per row
+            for row_idx in range(2, len(table_lines)):  # Skip header + separator
+                line = table_lines[row_idx][1]
+                values = [v.strip() for v in line.split("|")]
+                values = [v for v in values if v]
+
+                if len(values) != len(headers):
+                    continue
+
+                company = dict(zip(headers, values))
+                companies.append(company)
+
+        # Ensure country is set for all companies
+        for company in companies:
+            if "country" not in company:
+                company["country"] = "Vietnam"  # Default
+
+        logger.info(f"Parsed {len(companies)} companies from Markdown table (field-rows format)")
         return companies
 
     def _parse_csv(self, response: str) -> List[Dict]:
@@ -184,10 +353,10 @@ class CompanyParser:
     def _filter_and_prepare_records(self, companies: List[Dict]) -> List[Dict]:
         """Filter out invalid records and prepare for insertion
 
-        - Skip records missing required fields
-        - Fill optional fields with "N/A"
-        - Normalize LinkedIn URLs
-        - Validate scores
+        Tolerant filtering strategy:
+        - Skip only if missing REQUIRED fields (name, country)
+        - For optional fields with format errors, attempt to clean or skip gracefully
+        - Don't reject entire record just because one field is malformed
 
         Returns:
             List of valid, prepared company records
@@ -195,10 +364,13 @@ class CompanyParser:
         valid_records = []
 
         for idx, company in enumerate(companies):
-            # Check required fields
-            if not company.get("name") or not company.get("country"):
+            # Check required fields - only these are hard requirements
+            name = company.get("name") or company.get("Company Name (English)")
+            country = company.get("country") or company.get("Country")
+
+            if not name or not country:
                 logger.warning(
-                    f"Row {idx}: Skipping company without name or country"
+                    f"Row {idx}: Skipping company without name or country. Has: {list(company.keys())}"
                 )
                 continue
 
@@ -208,7 +380,11 @@ class CompanyParser:
             # Copy all fields, filling missing optional ones with "N/A"
             for field in self.ALL_FIELDS:
                 if field in company:
-                    record[field] = company[field]
+                    value = company[field]
+                    # Try to clean problematic values
+                    if value and isinstance(value, str):
+                        value = value.strip()
+                    record[field] = value if value else "N/A"
                 elif field in self.REQUIRED_FIELDS:
                     # Required field missing - should have been caught above
                     record[field] = None
@@ -216,18 +392,30 @@ class CompanyParser:
                     # Optional field - fill with N/A
                     record[field] = "N/A"
 
-            # Normalize LinkedIn URL if present
-            if record.get("linkedin_url"):
-                record["linkedin_normalized"] = self.normalize_linkedin_url(
-                    record["linkedin_url"]
-                )
-            else:
+            # Ensure name and country are set
+            record["name"] = name
+            record["country"] = country
+
+            # Normalize LinkedIn URL if present and valid
+            try:
+                if record.get("linkedin_url") and record["linkedin_url"] != "N/A":
+                    record["linkedin_normalized"] = self.normalize_linkedin_url(
+                        record["linkedin_url"]
+                    )
+                else:
+                    record["linkedin_normalized"] = ""
+            except Exception as e:
+                logger.debug(f"Failed to normalize LinkedIn URL for {name}: {e}")
                 record["linkedin_normalized"] = ""
 
-            # Validate and clamp score
-            record["prospect_score"] = self.validate_and_clamp_score(
-                record.get("prospect_score")
-            )
+            # Validate and clamp score (tolerant - converts to valid range even if malformed)
+            try:
+                record["prospect_score"] = self.validate_and_clamp_score(
+                    record.get("prospect_score")
+                )
+            except Exception as e:
+                logger.debug(f"Failed to validate score for {name}: {e}")
+                record["prospect_score"] = 5  # Default middle score
 
             # Set priority based on prospect_score if not provided
             if record.get("priority") == "N/A":
