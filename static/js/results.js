@@ -48,6 +48,15 @@ window.addEventListener('DOMContentLoaded', () => {
         document.querySelector(`.view-btn[data-view="card"]`).classList.add('active');
     }
 
+    // Initialize keyboard navigation
+    setupViewToggleKeyboard();
+
+    // Mobile default: use card view if screen width < 768px
+    if (window.innerWidth < 768 && currentState.view !== 'card') {
+        // Don't force card view, but log a note
+        console.info('Mobile device detected - card view recommended');
+    }
+
     // Fetch results
     fetchResults();
 });
@@ -368,6 +377,24 @@ function renderTableView() {
     container.setAttribute('role', 'region');
     container.setAttribute('aria-label', `搜索结果表格，共 ${currentState.companies.length} 家公司`);
 
+    // Show mobile warning if on small screen
+    if (window.innerWidth < 768) {
+        const warning = document.createElement('div');
+        warning.className = 'mobile-table-warning';
+        warning.setAttribute('role', 'alert');
+        warning.innerHTML = '⚠️ 此视图在手机上显示可能不清晰，推荐使用卡片视图';
+        warning.style.cssText = `
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+        `;
+        container.appendChild(warning);
+    }
+
     // Load sort preference from localStorage (only on first render to avoid race conditions)
     // Use a flag to prevent reloading on every render
     if (!currentState._sortPrefLoaded) {
@@ -657,9 +684,122 @@ function openUrl(url) {
 }
 
 /**
+ * Save card view state (scroll position)
+ */
+function saveCardViewState() {
+    try {
+        const scrollPos = document.documentElement.scrollTop || document.body.scrollTop;
+        localStorage.setItem('tranotra_leads_card_scroll', scrollPos.toString());
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            console.warn('localStorage quota exceeded, scroll position not saved');
+        }
+    }
+}
+
+/**
+ * Restore card view state (scroll position)
+ */
+function restoreCardViewState() {
+    try {
+        const savedScroll = localStorage.getItem('tranotra_leads_card_scroll');
+        if (savedScroll) {
+            const scrollPos = parseInt(savedScroll, 10);
+            if (!isNaN(scrollPos) && scrollPos >= 0) {
+                // Use requestAnimationFrame to ensure DOM is fully rendered
+                // with longer timeout as fallback for slower devices
+                if (window.requestAnimationFrame) {
+                    requestAnimationFrame(() => {
+                        window.scrollTo(0, scrollPos);
+                    });
+                } else {
+                    setTimeout(() => {
+                        window.scrollTo(0, scrollPos);
+                    }, 100);
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to restore card scroll position:', e);
+    }
+}
+
+/**
+ * Save table view state (sort, direction, page)
+ */
+function saveTableViewState() {
+    try {
+        const tableState = {
+            view: 'table',
+            sortColumn: currentState.sortColumn || 'prospect_score',
+            sortDir: currentState.sortDirection || 'desc',
+            page: currentState.page || 1
+        };
+        localStorage.setItem('tranotra_leads_table_state', JSON.stringify(tableState));
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            console.warn('localStorage quota exceeded, table state not saved');
+        }
+    }
+}
+
+/**
+ * Restore table view state (sort, direction, page)
+ */
+function restoreTableViewState() {
+    try {
+        const saved = localStorage.getItem('tranotra_leads_table_state');
+        if (saved) {
+            const state = JSON.parse(saved);
+            // Validate state is an object with expected structure
+            if (state && typeof state === 'object') {
+                // Validate sortColumn exists and is a valid column
+                const validColumns = ['name', 'country', 'prospect_score', 'priority', 'website'];
+                if (state.sortColumn && validColumns.includes(state.sortColumn)) {
+                    currentState.sortColumn = state.sortColumn;
+                } else {
+                    currentState.sortColumn = 'prospect_score';
+                }
+
+                // Validate sortDir is 'asc' or 'desc'
+                if (state.sortDir === 'asc' || state.sortDir === 'desc') {
+                    currentState.sortDirection = state.sortDir;
+                } else {
+                    currentState.sortDirection = 'desc';
+                }
+
+                // Validate page is a positive integer
+                if (typeof state.page === 'number' && state.page >= 1) {
+                    currentState.page = Math.floor(state.page);
+                } else {
+                    currentState.page = 1;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to restore table state:', e);
+    }
+}
+
+/**
  * Switch view between card and table
  */
 function switchView(view) {
+    const container = document.getElementById('results-container');
+
+    // Prevent multiple view switches during animation
+    if (currentState._animationInProgress) {
+        console.warn('View switch animation already in progress, ignoring request');
+        return;
+    }
+
+    // Save state before switching away
+    if (currentState.view === 'card') {
+        saveCardViewState();
+    } else if (currentState.view === 'table') {
+        saveTableViewState();
+    }
+
     currentState.view = view;
 
     try {
@@ -670,22 +810,70 @@ function switchView(view) {
         }
     }
 
-    // Update button styles
-    document.querySelectorAll('.view-btn').forEach(btn => {
+    // Update button styles and disable during animation
+    const viewBtns = document.querySelectorAll('.view-btn');
+    viewBtns.forEach(btn => {
         btn.classList.remove('active');
+        btn.disabled = true;  // Disable buttons during animation
     });
     document.querySelector(`.view-btn[data-view="${view}"]`).classList.add('active');
 
-    // Reset sort preference loading flag when switching to table view
+    // Reset sort preference loading flag and restore table state before rendering
     if (view === 'table') {
         currentState._sortPrefLoaded = false;
+        // Restore table state before rendering
+        restoreTableViewState();
+        // Mark as loaded to prevent re-loading in renderTableView
+        currentState._sortPrefLoaded = true;
     }
 
-    // Re-render
-    if (view === 'card') {
-        renderCardView();
+    // Add fade animation
+    if (container) {
+        currentState._animationInProgress = true;
+        container.classList.add('view-fade-out');
+
+        setTimeout(() => {
+            // Re-render
+            if (view === 'card') {
+                renderCardView();
+            } else {
+                renderTableView();
+            }
+
+            // Remove fade-out and add fade-in
+            const newContainer = document.getElementById('results-container');
+            if (newContainer) {
+                newContainer.classList.remove('view-fade-out');
+                newContainer.classList.add('view-fade-in');
+
+                setTimeout(() => {
+                    newContainer.classList.remove('view-fade-in');
+                    // Re-enable buttons after animation
+                    viewBtns.forEach(btn => {
+                        btn.disabled = false;
+                    });
+                    currentState._animationInProgress = false;
+
+                    // Restore scroll position after animation completes
+                    if (view === 'card') {
+                        restoreCardViewState();
+                    }
+                }, 300);
+            }
+        }, 150);
     } else {
-        renderTableView();
+        // Fallback if container not found
+        if (view === 'card') {
+            renderCardView();
+            restoreCardViewState();
+        } else {
+            renderTableView();
+        }
+        // Re-enable buttons
+        viewBtns.forEach(btn => {
+            btn.disabled = false;
+        });
+        currentState._animationInProgress = false;
     }
 }
 
@@ -940,3 +1128,112 @@ function openNoteModal(companyId) {
     };
     document.addEventListener('keydown', escapeHandler);
 }
+
+/**
+ * Setup keyboard navigation for view toggle buttons
+ * Uses event delegation to avoid duplicate listener registration
+ */
+function setupViewToggleKeyboard() {
+    // Only set up delegation once
+    if (currentState._keyboardNavSetup) {
+        return;
+    }
+
+    const viewToggleContainer = document.querySelector('.view-toggle');
+    if (!viewToggleContainer) return;
+
+    // Use event delegation on parent container instead of adding listeners to each button
+    viewToggleContainer.addEventListener('keydown', (e) => {
+        const btn = e.target;
+        if (!btn.classList.contains('view-btn')) return;
+
+        const viewBtns = Array.from(viewToggleContainer.querySelectorAll('.view-btn'));
+        const index = viewBtns.indexOf(btn);
+
+        // Allow Enter and Space to activate the button
+        if ((e.key === 'Enter' || e.key === ' ') && !btn.disabled) {
+            e.preventDefault();
+            btn.click();
+        }
+        // Allow arrow keys to navigate between buttons
+        if (e.key === 'ArrowRight' && index < viewBtns.length - 1) {
+            e.preventDefault();
+            viewBtns[index + 1].focus();
+        }
+        if (e.key === 'ArrowLeft' && index > 0) {
+            e.preventDefault();
+            viewBtns[index - 1].focus();
+        }
+    });
+
+    currentState._keyboardNavSetup = true;
+}
+
+/**
+ * Global keyboard navigation handler for card/table views
+ * Avoids interfering with form inputs and other interactive elements
+ */
+document.addEventListener('keydown', (e) => {
+    const container = document.getElementById('results-container');
+    if (!container || !currentState.companies.length) return;
+
+    // Don't intercept keyboard events on form inputs
+    const activeElement = document.activeElement;
+    if (activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT' ||
+        activeElement.contentEditable === 'true'
+    )) {
+        return;
+    }
+
+    if (currentState.view === 'card') {
+        // Arrow down: scroll to next card
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            // Calculate scroll amount based on viewport or estimated card height
+            const cardView = container.querySelector('.card-view');
+            const cardHeight = cardView ? cardView.querySelector('.company-card')?.offsetHeight || 350 : 350;
+            const scrollAmount = Math.max(cardHeight, 200);
+            window.scrollBy(0, scrollAmount);
+        }
+        // Arrow up: scroll to previous card
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const cardView = container.querySelector('.card-view');
+            const cardHeight = cardView ? cardView.querySelector('.company-card')?.offsetHeight || 350 : 350;
+            const scrollAmount = Math.max(cardHeight, 200);
+            window.scrollBy(0, -scrollAmount);
+        }
+    } else if (currentState.view === 'table') {
+        const rows = container.querySelectorAll('.data-row');
+        if (!rows || rows.length === 0) return;
+
+        // Find currently selected or focused row
+        let currentRowIndex = Array.from(rows).findIndex(row =>
+            row.classList.contains('selected') || document.activeElement === row
+        );
+
+        if (currentRowIndex === -1) currentRowIndex = 0;
+
+        // Arrow down: move to next row
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextIndex = Math.min(currentRowIndex + 1, rows.length - 1);
+            if (rows[nextIndex]) {
+                rows[nextIndex].focus();
+                rows[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+        // Arrow up: move to previous row
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevIndex = Math.max(currentRowIndex - 1, 0);
+            if (rows[prevIndex]) {
+                rows[prevIndex].focus();
+                rows[prevIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+    }
+});
