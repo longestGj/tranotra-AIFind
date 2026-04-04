@@ -267,14 +267,45 @@ class TestSaveRawResponse:
         assert filepath.endswith(".json")
 
     def test_save_raw_response_error_handling(self, caplog):
-        """Test that errors are logged but don't raise exceptions"""
+        """Test that errors are raised (not silent)"""
         # Try to save with invalid path that can't be created
         with patch("pathlib.Path.mkdir", side_effect=PermissionError("Permission denied")):
             with caplog.at_level(logging.ERROR):
-                filepath = save_raw_response("Vietnam", "test", "response")
+                with pytest.raises(GeminiError, match="Failed to save raw response"):
+                    save_raw_response("Vietnam", "test", "response")
 
-            assert filepath == ""
             assert any("Failed to save raw response" in record.message for record in caplog.records)
+
+    def test_save_raw_response_special_characters_sanitized(self):
+        """Test that special characters are sanitized from query"""
+        from pathlib import Path
+
+        # Query with illegal Windows filename characters
+        response_text = "test"
+        filepath = save_raw_response("Vietnam", "PVC<>:|?*\\/test", response_text)
+
+        # Extract filename from path
+        filename = Path(filepath).name
+        # Should not contain illegal characters
+        assert '<' not in filename
+        assert '>' not in filename
+        assert ':' not in filename
+        assert '|' not in filename
+        assert '?' not in filename
+        assert '*' not in filename
+        assert '\\' not in filename
+        assert '/' not in filename
+
+    def test_save_raw_response_file_verification(self):
+        """Test that file write is verified before returning path"""
+        response_text = "test response content"
+        saved_path = save_raw_response("Vietnam", "test query", response_text)
+
+        # Verify file actually exists and has content
+        assert Path(saved_path).exists()
+        with open(saved_path, "r") as f:
+            content = f.read()
+        assert content == response_text
 
 
 class TestGetLastSavedResponsePath:
@@ -316,6 +347,33 @@ class TestGetLastSavedResponsePath:
         retrieved_path = get_last_saved_response_path()
         assert retrieved_path == saved_path
         assert retrieved_path != ""
+
+    def test_concurrent_saves_thread_safe(self):
+        """Test that concurrent saves don't create race conditions"""
+        import threading
+
+        results = []
+
+        def save_in_thread(country, query, index):
+            response_text = f"response_{index}"
+            path = save_raw_response(country, query, response_text)
+            results.append((index, path))
+
+        threads = [
+            threading.Thread(target=save_in_thread, args=(f"Country{i}", f"Query{i}", i))
+            for i in range(5)
+        ]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # All saves should complete without error
+        assert len(results) == 5
+        # All paths should be unique
+        paths = [r[1] for r in results]
+        assert len(set(paths)) == 5, "Concurrent saves should create unique files"
 
 
 class TestIntegration:

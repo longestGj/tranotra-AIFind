@@ -420,21 +420,32 @@ def parse_response_and_insert(
 
     try:
         # Read response from file (Story 1.4)
+        # First, attempt to interpret as file path if it looks like one
+        # (contains path separators or ends with .json)
+        response_text = None
         response_path = Path(response_or_filepath)
-        if response_path.exists() and response_path.is_file():
-            try:
-                with open(response_path, "r", encoding="utf-8") as f:
-                    response_text = f.read()
-                logger.info(f"Read response from file: {response_path}")
-            except Exception as e:
-                error_msg = f"Failed to read response file {response_path}: {e}"
-                logger.error(error_msg)
-                result["message"] = "解析失败：无法读取保存的响应文件"
-                return result
+
+        if ("/" in response_or_filepath or "\\" in response_or_filepath or
+            response_or_filepath.endswith(".json")):
+            # Looks like a file path, try to read it
+            if response_path.exists() and response_path.is_file():
+                try:
+                    with open(response_path, "r", encoding="utf-8") as f:
+                        response_text = f.read()
+                    logger.info(f"Read response from file: {response_path}")
+                except Exception as e:
+                    error_msg = f"Failed to read response file {response_path}: {e}"
+                    logger.error(error_msg)
+                    result["message"] = "解析失败：无法读取保存的响应文件"
+                    return result
+            else:
+                # File path format but file doesn't exist
+                logger.warning(f"File path format but file not found: {response_path}, treating as text")
+                response_text = response_or_filepath
         else:
-            # Fallback: treat as raw response text (backward compatibility)
+            # Doesn't look like a file path, treat as raw response text (backward compatibility)
             response_text = response_or_filepath
-            logger.debug(f"Using direct response text (not file path)")
+            logger.debug("Using direct response text (not file path)")
 
         # Parse response into company records
         parsed_companies = parser.parse_response(response_text, format)

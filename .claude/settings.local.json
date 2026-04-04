@@ -101,7 +101,20 @@
       "Bash(python -m pytest tests/ -v)",
       "Bash(python -m pytest tests/e2e/test_search_results_api.py::TestSearchResultsAPI::test_get_results_without_filters -v)",
       "Bash(node:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(pip list:*)",
+      "Bash(python tranotra-leads/run.py)",
+      "Skill(browse)",
+      "Bash(pkill -f \"python.*run.py\")",
+      "Bash(rm -rf tranotra-leads/src)",
+      "Bash(rm -f tranotra-leads/.env)",
+      "Bash(cp:*)",
+      "Bash(python -c ':*)",
+      "Bash(pkill -9 -f \"python.*run.py\")",
+      "Bash(nohup python:*)",
+      "Bash(python)",
+      "Bash(curl:*)",
+      "Bash(python:*)"
     ]
   }
 }

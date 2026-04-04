@@ -420,4 +420,38 @@ So that the database contains only clean, unique company records.
 
 ---
 
+## Code Review Findings (2026-04-04)
+
+**Status:** RESOLVED ✅
+
+### Decision-Needed (Resolved) ✓
+- [x] [Review][Decision → Patch B] **save_raw_response() exception handling** — Resolved: Changed to raise `GeminiError` on write failure instead of returning empty string. [gemini_client.py:90-112]
+
+- [x] [Review][Decision → Patch C] **Success message in response** — Resolved: Added message field to JSON response with "搜索成功，正在处理结果..." text. [routes.py:240-245]
+
+### Patches (All Fixed) ✓
+
+- [x] [Review][Patch] **CRITICAL: Global variable race condition** — FIXED: Added `threading.Lock()` protection around `_last_saved_response_path` reads/writes. [gemini_client.py:32-35, 73-75, 107-108]
+
+- [x] [Review][Patch] **HIGH: Unsafe file path construction** — FIXED: Implemented regex-based sanitization to remove all illegal Windows filename characters. [gemini_client.py:95-99]
+
+- [x] [Review][Patch] **HIGH: File system error recovery unclear** — FIXED: Now raises `GeminiError` on save failure, added file existence verification in routes layer. [gemini_client.py:90-112, routes.py:206-230]
+
+- [x] [Review][Patch] **MEDIUM: Missing file path validation** — FIXED: Added explicit file existence check before parsing. [routes.py:224-230]
+
+- [x] [Review][Patch] **MEDIUM: Error message ambiguity** — FIXED: Distinguished between save failures (500) and format errors (400) with specific error messages. [routes.py:201-230]
+
+- [x] [Review][Patch] **MEDIUM: Backward compatibility logic fragile** — FIXED: Improved heuristic by checking for path indicators (/, \, .json) before attempting file read. [db.py:438-460]
+
+- [x] [Review][Patch] **MEDIUM: Test coverage gaps** — FIXED: Added concurrent thread test, special character sanitization test, file verification test. [tests/unit/test_gemini_client.py:195-234]
+
+### Deferred ✓
+(Pre-existing or non-blocking)
+
+- [x] [Review][Defer] **LOW: Documentation-implementation mismatch** — Story spec shows `{timestamp}_{country}_{query}.json` but implementation truncates query and applies additional escaping. Minor discrepancy, update docs in next spec revision. [spec vs. gemini_client.py:81-83]
+
+- [x] [Review][Defer] **LOW: Timestamp precision collision** — File naming uses `strftime("%Y%m%d_%H%M%S")` (second precision). Same query run within same second overwrites previous file. Low probability, can optimize in future PR. [gemini_client.py:81]
+
+---
+
 **Document Created:** 2026-04-03

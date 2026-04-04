@@ -32,7 +32,7 @@ _lock = threading.Lock()
 # Load prompt template once
 _PROMPT_TEMPLATE: Optional[str] = None
 
-# Track last saved response file path for Story 1.4 flow
+# Track last saved response file path for Story 1.4 flow (protected by _lock for thread safety)
 _last_saved_response_path: str = ""
 
 
@@ -66,12 +66,13 @@ def _load_prompt_template() -> str:
 
 
 def get_last_saved_response_path() -> str:
-    """Get the path of the last saved Gemini response file
+    """Get the path of the last saved Gemini response file (thread-safe)
 
     Returns:
         str: File path, or empty string if nothing has been saved
     """
-    return _last_saved_response_path
+    with _lock:
+        return _last_saved_response_path
 
 
 def save_raw_response(country: str, query: str, response_text: str) -> str:
@@ -84,7 +85,11 @@ def save_raw_response(country: str, query: str, response_text: str) -> str:
 
     Returns:
         str: File path to saved response
+
+    Raises:
+        GeminiError: If file save operation fails
     """
+    import re
     global _last_saved_response_path
 
     try:
@@ -92,8 +97,13 @@ def save_raw_response(country: str, query: str, response_text: str) -> str:
         response_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        sanitized_query = query.replace(" ", "_")[:30]
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:19]  # Use microseconds for uniqueness
+
+        # Sanitize query: remove illegal Windows filename characters and truncate
+        # Legal chars: alphanumeric, hyphen, underscore, dot (except leading/trailing)
+        sanitized_query = re.sub(r'[<>:"|?*\\/\s]+', '_', query.lower())[:30]
+        sanitized_query = sanitized_query.strip('_')  # Remove leading/trailing underscores
+
         filename = f"{timestamp}_{country}_{sanitized_query}.json"
         filepath = response_dir / filename
 
@@ -101,16 +111,21 @@ def save_raw_response(country: str, query: str, response_text: str) -> str:
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(response_text)
 
-        # Update global path tracker for Story 1.4 flow
-        _last_saved_response_path = str(filepath)
+        # Verify file was written (check file exists and has content)
+        if not filepath.exists() or filepath.stat().st_size == 0:
+            raise IOError(f"File write verification failed: {filepath} is empty or missing")
+
+        # Update global path tracker (thread-safe)
+        with _lock:
+            _last_saved_response_path = str(filepath)
 
         logger.info(f"Saved raw Gemini response to {filepath}")
         return str(filepath)
 
     except Exception as e:
-        logger.error(f"Failed to save raw response: {e}")
-        # Don't raise - this is a non-critical operation
-        return ""
+        error_msg = f"Failed to save raw response: {e}"
+        logger.error(error_msg)
+        raise GeminiError(error_msg) from e
 
 
 def _redact_api_key(api_key: str) -> str:
@@ -226,10 +241,13 @@ def call_gemini_grounding_search(
 
             logger.info(f"Gemini API call successful: {len(result_text)} characters returned")
 
-            # Save raw response to file for debugging and re-parsing
-            saved_path = save_raw_response(country, query, result_text)
-            if saved_path:
+            # Save raw response to file for debugging and re-parsing (may raise GeminiError)
+            try:
+                saved_path = save_raw_response(country, query, result_text)
                 logger.info(f"Raw response saved to: {saved_path}")
+            except GeminiError as e:
+                logger.error(f"Failed to save response to file: {e}")
+                raise  # Re-raise to caller for proper handling
 
             return result_text
 

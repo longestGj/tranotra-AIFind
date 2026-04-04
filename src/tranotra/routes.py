@@ -5,6 +5,7 @@ import time
 import json
 import os
 import threading
+from pathlib import Path
 from typing import Tuple, Dict, Optional
 from functools import lru_cache
 from collections import OrderedDict
@@ -175,16 +176,37 @@ def search_api() -> Tuple[Response, int]:
             )
 
         # Call Gemini API (response is automatically saved to file in gemini_client)
-        response = call_gemini_grounding_search(country, keyword)
-
-        # Get the file path where the response was saved (Story 1.4)
-        response_file_path = get_last_saved_response_path()
-        if not response_file_path:
-            logger.warning(f"Failed to save response for {country}/{keyword}")
+        try:
+            response = call_gemini_grounding_search(country, keyword)
+        except GeminiError as e:
+            logger.error(f"Gemini save failed: {e}")
             return (
                 jsonify({
                     "status": "error",
                     "message": "搜索失败：无法保存响应，请稍后重试"
+                }),
+                500
+            )
+
+        # Get the file path where the response was saved (Story 1.4)
+        response_file_path = get_last_saved_response_path()
+        if not response_file_path:
+            logger.error(f"Response file path missing for {country}/{keyword}")
+            return (
+                jsonify({
+                    "status": "error",
+                    "message": "搜索失败：内部错误，请稍后重试"
+                }),
+                500
+            )
+
+        # Verify saved file exists and is readable
+        if not Path(response_file_path).exists():
+            logger.error(f"Saved response file not found: {response_file_path}")
+            return (
+                jsonify({
+                    "status": "error",
+                    "message": "搜索失败：保存的响应文件丢失，请稍后重试"
                 }),
                 500
             )
@@ -233,7 +255,8 @@ def search_api() -> Tuple[Response, int]:
         response_data = {
             "status": "success",
             "format": fmt,
-            "message": parse_result["message"],
+            "message": "搜索成功，正在处理结果...",  # Story 1.4 AC requirement
+            "details": parse_result["message"],  # Detailed parsing stats
             "new_count": parse_result["new_count"],
             "duplicate_count": parse_result["duplicate_count"],
             "avg_score": parse_result["avg_score"],
