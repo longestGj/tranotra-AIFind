@@ -1,0 +1,266 @@
+/* Dashboard Styles for Analytics Metrics */
+
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --secondary-color: #6c757d;
+    --light-bg: #f8f9fa;
+    --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+body {
+    background-color: var(--light-bg);
+    color: #333;
+}
+
+.dashboard-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+/* Responsive grid layout */
+@media (min-width: 1200px) {
+    .metrics-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 767px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Metric Card Styling */
+.metric-card {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+    border-left: 4px solid var(--primary-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.metric-card.positive {
+    border-left-color: var(--success-color);
+}
+
+.metric-card.negative {
+    border-left-color: var(--danger-color);
+}
+
+.metric-card.neutral {
+    border-left-color: var(--secondary-color);
+}
+
+.metric-card.no-data {
+    opacity: 0.6;
+    background-color: #f8f9fa;
+}
+
+/* Metric Label */
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+/* Metric Value */
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.metric-value.small {
+    font-size: 1.5rem;
+}
+
+/* Metric Trend */
+.metric-trend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.trend-arrow {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.trend-arrow.up {
+    color: var(--success-color);
+}
+
+.trend-arrow.down {
+    color: var(--danger-color);
+}
+
+.trend-arrow.neutral {
+    color: var(--secondary-color);
+}
+
+.trend-value {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.trend-value.positive {
+    color: var(--success-color);
+}
+
+.trend-value.negative {
+    color: var(--danger-color);
+}
+
+/* Spinner Loading */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Form Controls */
+.form-select {
+    border-color: #dee2e6;
+    min-width: 200px;
+}
+
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Alert Styling */
+.alert {
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+/* Period Filter Section */
+.form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+/* Utility Classes */
+.text-muted {
+    color: #6c757d;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-end {
+    text-align: right;
+}
+
+/* Dark Mode Support (Optional) */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+    }
+
+    .metric-card {
+        background: #2d2d2d;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.5);
+    }
+
+    .metric-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5);
+    }
+
+    .metric-label {
+        color: #b0b0b0;
+    }
+
+    .metric-value {
+        color: #e0e0e0;
+    }
+
+    .dashboard-title {
+        color: #e0e0e0;
+    }
+
+    .form-select {
+        background-color: #2d2d2d;
+        color: #e0e0e0;
+        border-color: #3d3d3d;
+    }
+
+    .form-label {
+        color: #e0e0e0;
+    }
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.metric-card {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Print Styles */
+@media print {
+    .form-select,
+    #period-filter,
+    .btn {
+        display: none;
+    }
+
+    .metric-card {
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}

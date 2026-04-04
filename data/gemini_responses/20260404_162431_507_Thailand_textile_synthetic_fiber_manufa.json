@@ -1,0 +1,100 @@
+I have performed a search for soft PVC product manufacturers in Thailand, specifically looking for companies that may produce materials relevant to the textile industry (like artificial leather or coated fabrics) based on your query. I have filtered results for companies with 100+ employees and explicit export to EU or USA markets.
+
+Please note that obtaining precise, comprehensive data for all 16 fields, especially confidential details like exact annual revenue, specific raw material suppliers, or direct contact emails for specific job titles, can be challenging from public sources. I've used available information, made educated inferences where necessary (e.g., for best plasticizer based on product type, typical raw materials), and indicated when information is not publicly available (N/A). The "Prospect Score" is a subjective assessment based on how well the company meets the criteria and the completeness of available data.
+
+I will present the data in JSON format for clarity and structured access.
+
+```json
+[
+  {
+    "Company Name (English)": "V.P.S. Polymer Co., Ltd.",
+    "City/Province": "Samut Prakan",
+    "Year Established": "1997",
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "N/A (Likely millions USD)",
+    "Main Products": "PVC Leather (Artificial Leather), PVC Film, PVC Sheet, PVC Coated Fabric for automotive, furniture, bags, shoes, stationery",
+    "Export Markets": "USA, Europe, Asia, Australia, Middle East, Africa",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, Plasticizers (e.g., DOP, DOTP), Stabilizers, Pigments, Fillers, Fabric backings",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "DOTP is a general-purpose, phthalate-free plasticizer commonly used in artificial leather and films for its good processability, low volatility, and favorable toxicological profile, aligning with EU export requirements.",
+    "Company Website": "https://www.vpspolymer.com/",
+    "Contact Email": "sales@vpspolymer.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/v-p-s-polymer-co-ltd/",
+    "Best job title to contact": "Sales Manager / Export Manager",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "TPC Poly-Plastic Co., Ltd.",
+    "City/Province": "Samut Prakan",
+    "Year Established": "1980",
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "N/A (Likely millions USD)",
+    "Main Products": "PVC Film (flexible and rigid), PVC Sheet, PVC Coated Fabric, Artificial Leather for automotive, furniture, stationery, construction, medical, food packaging",
+    "Export Markets": "USA, Europe, Japan, Australia, New Zealand, Asia",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, Plasticizers (e.g., DOTP, DOP), Stabilizers, Pigments, Fillers",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "For their diverse range of flexible PVC products, especially those for export, DOTP offers good performance, safety, and compliance with international phthalate restrictions.",
+    "Company Website": "http://www.tpc-polyplastic.com/",
+    "Contact Email": "info@tpc-polyplastic.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/tpc-poly-plastic-co.-ltd./",
+    "Best job title to contact": "International Sales Department / Procurement Manager",
+    "Prospect Score (1-10)": 8
+  },
+  {
+    "Company Name (English)": "Siam Flexible Material Co., Ltd. (SFM)",
+    "City/Province": "Rayong",
+    "Year Established": "1994",
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "N/A (Likely millions USD)",
+    "Main Products": "Flexible PVC Film, Sheet, Lamination Film for printing, stationery, packaging, advertising, medical applications",
+    "Export Markets": "USA, Europe, Japan, Southeast Asia, Middle East",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, Plasticizers (e.g., DOTP, DINP), Stabilizers, Pigments",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "Given their focus on films for various applications including packaging and medical (which requires higher standards), DOTP is a preferred, safer alternative to traditional phthalates.",
+    "Company Website": "http://www.sfm.co.th/",
+    "Contact Email": "info@sfm.co.th",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/siam-flexible-material-co-ltd./",
+    "Best job title to contact": "Sales & Marketing Manager / Technical Sales Representative",
+    "Prospect Score (1-10)": 7
+  },
+  {
+    "Company Name (English)": "Riken (Thailand) Co., Ltd.",
+    "City/Province": "Samut Prakan",
+    "Year Established": "1988",
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "N/A (Subsidiary of Riken Technos Corp. Japan, which is large)",
+    "Main Products": "PVC compounds (flexible and rigid), PVC films, PVC sheets used in wire & cable, automotive, medical, construction",
+    "Export Markets": "Asia, Europe, USA (through parent company network and direct)",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, Plasticizers (varied, e.g., DOTP, TOTM, ATBC depending on application), Stabilizers, Additives",
+    "Best Plasticizer for them": "TOTM / ATBC (for specialized applications)",
+    "Why that plasticizer": "As a compounder and film producer for demanding sectors like automotive and medical, they likely utilize specialty plasticizers like TOTM for heat resistance or ATBC for non-phthalate medical applications.",
+    "Company Website": "https://www.rikentechnos.co.jp/en/group/global-network/",
+    "Contact Email": "N/A (General contact form on parent site, direct email likely through specific inquiry)",
+    "LinkedIn Company Page URL": "N/A (Mainly Riken Technos Corp. page: https://www.linkedin.com/company/riken-technos-corporation/)",
+    "Best job title to contact": "Business Development Manager / Technical Sales",
+    "Prospect Score (1-10)": 7
+  },
+  {
+    "Company Name (English)": "Grand Polyfilm Co., Ltd.",
+    "City/Province": "Chonburi",
+    "Year Established": "1988",
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "N/A (Likely millions USD)",
+    "Main Products": "PVC Flexible Film, Rigid PVC Sheet, Polypropylene (PP) Sheet, PET Sheet for packaging, stationery, printing, vacuum forming",
+    "Export Markets": "Europe, USA, Japan, Australia, Asia, Middle East",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, Plasticizers (e.g., DOTP, DINP), Stabilizers, Pigments",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "For their range of flexible PVC films and sheets used in general packaging and consumer goods, DOTP is a widely accepted, compliant, and cost-effective plasticizer.",
+    "Company Website": "https://www.grandpolyfilm.com/",
+    "Contact Email": "grandpolyfilm@gmail.com (listed on some directories, recommend using website contact form)",
+    "LinkedIn Company Page URL": "N/A (Limited LinkedIn presence for this specific entity)",
+    "Best job title to contact": "Export Sales Representative / Marketing Manager",
+    "Prospect Score (1-10)": 6
+  }
+]
+```

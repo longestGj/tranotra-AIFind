@@ -61,7 +61,7 @@ development_status:
 
   # Epic 3: 搜索效率分析 (Analytics & Optimization)
   epic-3: in-progress
-  3-1-dashboard-metrics: ready-for-dev
+  3-1-dashboard-metrics: in-progress
   3-2-search-term-ranking: backlog
   3-3-search-history-table: backlog
   3-4-dashboard-charts: backlog

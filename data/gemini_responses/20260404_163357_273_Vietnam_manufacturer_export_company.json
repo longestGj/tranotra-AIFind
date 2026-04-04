@@ -1,0 +1,98 @@
+Please note: As an AI, I do not have real-time internet browsing capabilities to conduct a live search. The companies and details provided below are simulated based on my extensive training data about the manufacturing industry in Vietnam and general company profiles. For a real-world search, you would use search engines, B2B directories (like Alibaba, Vietnam Sourcing, Yellow Pages Vietnam, Kompass, etc.), and LinkedIn.
+
+I have focused on providing examples that meet your criteria for 100+ employees and export to EU/USA, and demonstrating the detailed field extraction.
+
+```json
+[
+  {
+    "Company Name (English)": "An Phat Holdings (An Phat Bioplastics)",
+    "City/Province": "Hai Duong",
+    "Year Established": "2007",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "2000+",
+    "Estimated Annual Revenue": "Confidential (multi-million USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "Bio-degradable bags, PVC compounds, PVC sheets, industrial film, packaging materials, some flexible PVC components (compounds often used in various products)",
+    "Export Markets (which countries they sell to)": "EU, USA, Japan, Australia, Korea, UAE, Canada, Thailand, Philippines",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "PVC resin, bio-resins, calcium carbonate, various plasticizers, stabilizers, colorants",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "Given their focus on bioplastics and environmental consciousness, DOTP is a common, phthalate-free choice for flexible PVC components requiring good safety profiles for EU/USA markets.",
+    "Company Website": "https://www.anphatholdings.com/",
+    "Contact Email": "info@anphatholdings.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/anphatholdings/",
+    "Best job title to contact": "Procurement Director",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "Duc Thanh Plastic Co., Ltd.",
+    "City/Province": "Ho Chi Minh City",
+    "Year Established": "1991",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "500-2000",
+    "Estimated Annual Revenue": "Confidential (multi-million USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "Household plasticware, plastic furniture, industrial plastic components, some flexible PVC products like storage containers with flexible lids, hoses (for internal use, e.g., washing machine parts)",
+    "Export Markets (which countries they sell to)": "USA, EU (France, Germany), Japan, Korea, Australia, ASEAN countries",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "PP, PE, PVC resin, plasticizers (e.g., DOTP), masterbatch, various additives",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "For household and industrial products exported to the USA/EU, DOTP offers a good balance of performance, cost-effectiveness, and compliance with modern safety standards.",
+    "Company Website": "https://www.ducthanhplastic.com/",
+    "Contact Email": "info@ducthanhplastic.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/duc-thanh-plastic/",
+    "Best job title to contact": "Purchasing Manager",
+    "Prospect Score (1-10)": 8
+  },
+  {
+    "Company Name (English)": "Tan Dai Hung Plastic Joint Stock Company",
+    "City/Province": "Ho Chi Minh City",
+    "Year Established": "1994",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "500-2000",
+    "Estimated Annual Revenue": "Confidential (multi-million USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "Plastic pipes (PVC, HDPE), plastic sheets, plastic packaging, flexible PVC films, garden hoses, flexible tubing for industrial and agricultural use.",
+    "Export Markets (which countries they sell to)": "USA, EU (Germany, UK), Japan, Australia, Cambodia, Laos",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "PVC resin, HDPE, plasticizers (e.g., DOTP, TOTM), stabilizers, fillers",
+    "Best Plasticizer for them": "DOTP / TOTM",
+    "Why that plasticizer": "For garden hoses and industrial tubing, DOTP is suitable for general flexibility, while TOTM might be preferred for products needing enhanced durability or higher temperature resistance in outdoor/industrial settings.",
+    "Company Website": "https://tandaihung.com.vn/",
+    "Contact Email": "sales@tandaihung.com.vn",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/tan-dai-hung-plastic-jsc/",
+    "Best job title to contact": "International Sales Manager",
+    "Prospect Score (1-10)": 8
+  },
+  {
+    "Company Name (English)": "Rang Dong Plastic Joint Stock Company",
+    "City/Province": "Ho Chi Minh City",
+    "Year Established": "1960",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "500-2000",
+    "Estimated Annual Revenue": "Confidential (multi-million USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "PVC film, PVC sheet, synthetic leather, tarpaulins, rainwear, medical PVC products (e.g., IV bags - though increasingly niche), various flexible packaging.",
+    "Export Markets (which countries they sell to)": "EU (France, Spain), USA, Japan, Korea, Australia, ASEAN, Africa",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "PVC resin, calcium carbonate, plasticizers (e.g., ATBC, DOTP), stabilizers, pigments",
+    "Best Plasticizer for them": "ATBC / DOTP",
+    "Why that plasticizer": "For products like synthetic leather, rainwear, and potentially medical/food contact (depending on specific product lines), ATBC or DOTP are preferred non-phthalate plasticizers meeting stringent EU/USA safety standards.",
+    "Company Website": "https://rangdongplastic.com.vn/",
+    "Contact Email": "info@rangdongplastic.com.vn",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/rang-dong-plastic-jsc/",
+    "Best job title to contact": "Head of Sourcing",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "Song Long Plastic Co., Ltd.",
+    "City/Province": "Hai Phong",
+    "Year Established": "1995",
+    "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "500-2000",
+    "Estimated Annual Revenue": "Confidential (multi-million USD)",
+    "Main Products (specific, e.g., \"PVC garden hoses, flexible tubing\")": "Household plastic products, industrial plastic components, plastic storage solutions, some flexible PVC products like seals, gaskets, soft connection parts in various assemblies.",
+    "Export Markets (which countries they sell to)": "USA, EU (Germany, UK), Japan, Australia, Canada, ASEAN",
+    "Export to EU/USA/Japan? (Yes/No)": "Yes",
+    "Raw Materials (e.g., PVC resin, plasticizers)": "PP, PE, PVC resin, plasticizers (e.g., DOTP), masterbatch, additives",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "For flexible components in household and industrial products exported to safety-conscious markets, DOTP offers good performance and phthalate-free compliance.",
+    "Company Website": "http://songlongplastic.com/",
+    "Contact Email": "export@songlongplastic.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/song-long-plastic-co-ltd/",
+    "Best job title to contact": "Export Sales Director",
+    "Prospect Score (1-10)": 7
+  }
+]
+```

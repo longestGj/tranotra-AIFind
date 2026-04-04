@@ -6,6 +6,7 @@ from flask import Flask, jsonify, render_template
 
 from tranotra.config import create_app_config
 from tranotra.routes import search_bp
+from tranotra.routes_analytics import analytics_bp
 from tranotra.infrastructure.database import init_db
 from tranotra.db import get_today_statistics
 
@@ -37,6 +38,7 @@ def create_app() -> Flask:
 
     # Register blueprints
     app.register_blueprint(search_bp)
+    app.register_blueprint(analytics_bp)
 
     # Home page endpoint (Search form)
     @app.route("/", methods=["GET"])
@@ -53,6 +55,16 @@ def create_app() -> Flask:
             stats = {"searches": 0, "new_companies": 0, "dedup_rate": 0}
 
         return render_template("index.html", stats=stats), 200
+
+    # Dashboard endpoint
+    @app.route("/dashboard", methods=["GET"])
+    def dashboard() -> tuple:
+        """Analytics dashboard page
+
+        Returns:
+            tuple: HTML response and HTTP status code
+        """
+        return render_template("dashboard.html"), 200
 
     return app
 
