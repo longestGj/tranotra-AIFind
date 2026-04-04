@@ -4,10 +4,11 @@ venv/
 env/
 ENV/
 
-# Environment Variables
+# Environment Variables (NEVER push API keys or secrets!)
+.env
 .env.local
-.env.test
 .env.development
+.env.test
 
 # Python
 __pycache__/
