@@ -2,6 +2,7 @@
 
 from typing import List, Dict, Optional
 import logging
+from pathlib import Path
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
@@ -376,15 +377,18 @@ def get_today_statistics() -> Dict:
 def parse_response_and_insert(
     country: str,
     query: str,
-    response: str,
+    response_or_filepath: str,
     format: str
 ) -> Dict:
     """Parse Gemini response and insert companies into database
 
+    Reads response from file (Story 1.4 flow) before parsing and insertion.
+
     Args:
         country: Country from search request
         query: Search keyword from request
-        response: Raw response from Gemini API
+        response_or_filepath: File path to saved Gemini response (data/gemini_responses/...)
+                            or raw response text (for backward compatibility)
         format: Response format ("JSON", "Markdown", or "CSV")
 
     Returns:
@@ -415,8 +419,25 @@ def parse_response_and_insert(
     }
 
     try:
+        # Read response from file (Story 1.4)
+        response_path = Path(response_or_filepath)
+        if response_path.exists() and response_path.is_file():
+            try:
+                with open(response_path, "r", encoding="utf-8") as f:
+                    response_text = f.read()
+                logger.info(f"Read response from file: {response_path}")
+            except Exception as e:
+                error_msg = f"Failed to read response file {response_path}: {e}"
+                logger.error(error_msg)
+                result["message"] = "解析失败：无法读取保存的响应文件"
+                return result
+        else:
+            # Fallback: treat as raw response text (backward compatibility)
+            response_text = response_or_filepath
+            logger.debug(f"Using direct response text (not file path)")
+
         # Parse response into company records
-        parsed_companies = parser.parse_response(response, format)
+        parsed_companies = parser.parse_response(response_text, format)
         if not parsed_companies:
             result["message"] = "解析失败：返回数据为空"
             logger.error(f"Empty response from {format} parser")

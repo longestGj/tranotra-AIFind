@@ -9,6 +9,7 @@ Tests cover:
 """
 
 import logging
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,7 +22,9 @@ from src.tranotra.core.exceptions import (
 from src.tranotra.gemini_client import (
     _redact_api_key,
     call_gemini_grounding_search,
+    get_last_saved_response_path,
     initialize_gemini,
+    save_raw_response,
 )
 
 
@@ -188,6 +191,133 @@ class TestCallGeminiGroundingSearch:
             gc._gemini_client = original_client
 
 
+class TestSaveRawResponse:
+    """Test suite for save_raw_response() function (Story 1.3)"""
+
+    @pytest.fixture(autouse=True)
+    def cleanup_response_files(self):
+        """Clean up saved response files after each test"""
+        import shutil
+        from pathlib import Path
+
+        yield
+
+        # Cleanup
+        response_dir = Path("data/gemini_responses")
+        if response_dir.exists():
+            shutil.rmtree(response_dir, ignore_errors=True)
+
+    def test_save_raw_response_creates_directory(self):
+        """Test that save_raw_response creates data/gemini_responses directory"""
+        from pathlib import Path
+
+        response_dir = Path("data/gemini_responses")
+        if response_dir.exists():
+            import shutil
+            shutil.rmtree(response_dir)
+
+        response_text = '{"companies": [{"name": "Test Co"}]}'
+        filepath = save_raw_response("Vietnam", "PVC manufacturer", response_text)
+
+        assert filepath != ""
+        assert Path(filepath).exists()
+        response_dir = Path("data/gemini_responses")
+        assert response_dir.exists()
+
+    def test_save_raw_response_creates_file_with_correct_content(self):
+        """Test that response content is correctly written to file"""
+        response_text = '{"companies": [{"name": "Company A", "country": "Vietnam"}]}'
+        filepath = save_raw_response("Vietnam", "cable manufacturer", response_text)
+
+        assert Path(filepath).exists()
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert content == response_text
+        assert "Company A" in content
+
+    def test_save_raw_response_filename_format(self):
+        """Test that filename follows format: {timestamp}_{country}_{query}.json"""
+        response_text = "test response"
+        filepath = save_raw_response("Vietnam", "PVC manufacturer", response_text)
+
+        filename = Path(filepath).name
+        # Format: {YYYYMMDD_HHMMSS}_{country}_{query}.json
+        # Example: 20260404_120530_Vietnam_PVC_manufactur.json
+        assert filename.startswith("202")  # Start of year 2026
+        assert "_Vietnam_" in filename
+        assert filename.endswith(".json")
+
+    def test_save_raw_response_sanitizes_query(self):
+        """Test that query is sanitized (spaces -> underscores, max 30 chars)"""
+        response_text = "test"
+        filepath = save_raw_response("Vietnam", "very long query with many spaces here", response_text)
+
+        filename = Path(filepath).name
+        # Query should have spaces replaced with underscores and be truncated
+        assert "very_long_query_with_many_sp" in filename
+
+    def test_save_raw_response_returns_filepath_as_string(self):
+        """Test that function returns filepath as string"""
+        response_text = "test"
+        filepath = save_raw_response("Vietnam", "test query", response_text)
+
+        assert isinstance(filepath, str)
+        assert len(filepath) > 0
+        assert filepath.endswith(".json")
+
+    def test_save_raw_response_error_handling(self, caplog):
+        """Test that errors are logged but don't raise exceptions"""
+        # Try to save with invalid path that can't be created
+        with patch("pathlib.Path.mkdir", side_effect=PermissionError("Permission denied")):
+            with caplog.at_level(logging.ERROR):
+                filepath = save_raw_response("Vietnam", "test", "response")
+
+            assert filepath == ""
+            assert any("Failed to save raw response" in record.message for record in caplog.records)
+
+
+class TestGetLastSavedResponsePath:
+    """Test suite for get_last_saved_response_path() function (Story 1.3)"""
+
+    @pytest.fixture(autouse=True)
+    def reset_global_path(self):
+        """Reset global path tracker before and after each test"""
+        import src.tranotra.gemini_client as gc
+
+        original_path = gc._last_saved_response_path
+        gc._last_saved_response_path = ""
+
+        yield
+
+        # Cleanup
+        import shutil
+        from pathlib import Path
+
+        response_dir = Path("data/gemini_responses")
+        if response_dir.exists():
+            shutil.rmtree(response_dir, ignore_errors=True)
+
+        gc._last_saved_response_path = original_path
+
+    def test_get_last_saved_response_path_returns_empty_initially(self):
+        """Test that function returns empty string before any save"""
+        import src.tranotra.gemini_client as gc
+        gc._last_saved_response_path = ""
+
+        path = get_last_saved_response_path()
+        assert path == ""
+
+    def test_get_last_saved_response_path_returns_saved_path(self):
+        """Test that function returns path after save_raw_response is called"""
+        response_text = "test response"
+        saved_path = save_raw_response("Vietnam", "test query", response_text)
+
+        retrieved_path = get_last_saved_response_path()
+        assert retrieved_path == saved_path
+        assert retrieved_path != ""
+
+
 class TestIntegration:
     """Integration tests for full workflow"""
 
@@ -208,3 +338,47 @@ class TestIntegration:
             # Call search
             response = call_gemini_grounding_search(country="Vietnam", query="manufacturer")
             assert '{"companies"' in response
+
+    def test_search_auto_saves_response_to_file(self):
+        """Test that call_gemini_grounding_search automatically saves response (Story 1.3)"""
+        import shutil
+        from pathlib import Path
+
+        # Cleanup before test
+        response_dir = Path("data/gemini_responses")
+        if response_dir.exists():
+            shutil.rmtree(response_dir)
+
+        try:
+            with patch("src.tranotra.gemini_client.genai") as mock_genai:
+                # Mock Gemini API
+                test_response_text = '{"companies": [{"name": "TestCo", "country": "Vietnam"}]}'
+                mock_response = MagicMock()
+                mock_response.text = test_response_text
+                mock_instance = MagicMock()
+                mock_instance.generate_content.return_value = mock_response
+                mock_genai.GenerativeModel.return_value = mock_instance
+
+                # Initialize
+                initialize_gemini("sk_test_api_key_12345678901234567890")
+
+                # Call search
+                result = call_gemini_grounding_search(country="Vietnam", query="test")
+
+                # Verify response returned
+                assert result == test_response_text
+
+                # Verify file was saved
+                saved_path = get_last_saved_response_path()
+                assert saved_path != ""
+                assert Path(saved_path).exists()
+
+                # Verify file content
+                with open(saved_path, "r", encoding="utf-8") as f:
+                    saved_content = f.read()
+                assert saved_content == test_response_text
+        finally:
+            # Cleanup
+            response_dir = Path("data/gemini_responses")
+            if response_dir.exists():
+                shutil.rmtree(response_dir)

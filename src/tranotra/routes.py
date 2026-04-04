@@ -11,7 +11,7 @@ from collections import OrderedDict
 
 from flask import Blueprint, Response, jsonify, request, render_template, current_app
 
-from tranotra.gemini_client import initialize_gemini, call_gemini_grounding_search
+from tranotra.gemini_client import initialize_gemini, call_gemini_grounding_search, get_last_saved_response_path
 from tranotra.core.exceptions import GeminiTimeoutError, GeminiError
 from tranotra.db import get_today_statistics, get_companies_paginated, parse_response_and_insert
 
@@ -97,6 +97,10 @@ def detect_response_format(response: str) -> str:
 
     response = response.strip()
 
+    # Check for JSON in Markdown code block (```json ... ```)
+    if "```json" in response:
+        return "JSON"
+
     # Check for JSON (starts with { or [)
     if response.startswith('{') or response.startswith('['):
         return "JSON"
@@ -170,25 +174,39 @@ def search_api() -> Tuple[Response, int]:
                 500
             )
 
-        # Call Gemini API
+        # Call Gemini API (response is automatically saved to file in gemini_client)
         response = call_gemini_grounding_search(country, keyword)
 
-        # Detect format
-        fmt = detect_response_format(response)
-        if fmt == "UNKNOWN":
-            logger.warning(f"Unknown response format for {country}/{keyword}")
+        # Get the file path where the response was saved (Story 1.4)
+        response_file_path = get_last_saved_response_path()
+        if not response_file_path:
+            logger.warning(f"Failed to save response for {country}/{keyword}")
             return (
                 jsonify({
                     "status": "error",
-                    "message": "搜索失败：格式错误，请稍后重试"
+                    "message": "搜索失败：无法保存响应，请稍后重试"
+                }),
+                500
+            )
+
+        # Detect format from the response
+        fmt = detect_response_format(response)
+        if fmt == "UNKNOWN":
+            logger.warning(f"Unknown response format for {country}/{keyword}, saved to {response_file_path}")
+            return (
+                jsonify({
+                    "status": "error",
+                    "message": "搜索失败：格式错误，请稍后重试",
+                    "debug_file": response_file_path  # Include path for debugging
                 }),
                 400
             )
 
-        logger.info(f"Response format detected: {fmt}")
+        logger.info(f"Response format detected: {fmt}, file: {response_file_path}")
 
-        # Parse response and insert into database (Story 1.5)
-        parse_result = parse_response_and_insert(country, keyword, response, fmt)
+        # Parse response from file and insert into database (Story 1.5)
+        # Pass file path instead of response text
+        parse_result = parse_response_and_insert(country, keyword, response_file_path, fmt)
 
         if not parse_result["success"]:
             logger.error(f"Parsing failed: {parse_result['message']}")

@@ -64,16 +64,69 @@ class CompanyParser:
             raise ValueError(f"Parser error: {str(e)}")
 
     def _parse_json(self, response: str) -> List[Dict]:
-        """Parse JSON array into company records"""
-        data = json.loads(response)
+        """Parse JSON array into company records
+
+        Handles JSON wrapped in Markdown code blocks (```json ... ```)
+        and maps Gemini field names to internal field names
+        """
+        # Check if JSON is wrapped in Markdown code block
+        json_str = response.strip()
+
+        # Extract JSON from Markdown code block if present
+        if "```json" in json_str:
+            start = json_str.find("```json") + len("```json")
+            end = json_str.find("```", start)
+            if end > start:
+                json_str = json_str[start:end].strip()
+        elif "```" in json_str:
+            start = json_str.find("```") + len("```")
+            end = json_str.find("```", start)
+            if end > start:
+                json_str = json_str[start:end].strip()
+
+        # Parse JSON
+        data = json.loads(json_str)
 
         if not isinstance(data, list):
             data = [data]
 
+        # Field name mappings from Gemini's response format to internal format
+        field_mapping = {
+            "Company Name (English)": "name",
+            "City/Province": "city",
+            "Year Established": "year_established",
+            "Employees (approximate)": "employees",
+            "Employees (approximate: <100 / 100-500 / 500-2000 / 2000+)": "employees",
+            "Estimated Annual Revenue": "estimated_revenue",
+            "Main Products": "main_products",
+            "Main Products (specific)": "main_products",
+            "Export Markets": "export_markets",
+            "Export to EU/USA/Japan?": "eu_us_jp_export",
+            "Raw Materials": "raw_materials",
+            "Best Plasticizer for them": "recommended_product",
+            "Why that plasticizer": "recommendation_reason",
+            "Company Website": "website",
+            "Contact Email": "contact_email",
+            "LinkedIn Company Page URL": "linkedin_url",
+            "Best job title to contact": "best_contact_title",
+            "Prospect Score": "prospect_score",
+            "Prospect Score (1-10)": "prospect_score"
+        }
+
         companies = []
         for item in data:
             if isinstance(item, dict):
-                companies.append(item)
+                # Map field names
+                mapped_item = {}
+                for gemini_field, value in item.items():
+                    internal_field = field_mapping.get(gemini_field, gemini_field.lower())
+                    mapped_item[internal_field] = value
+
+                # Ensure country field is set (default to search country if missing)
+                if "country" not in mapped_item:
+                    mapped_item["country"] = "Vietnam"  # Default - would be better if passed as parameter
+
+                companies.append(mapped_item)
 
         return companies
 
@@ -175,6 +228,24 @@ class CompanyParser:
             record["prospect_score"] = self.validate_and_clamp_score(
                 record.get("prospect_score")
             )
+
+            # Set priority based on prospect_score if not provided
+            if record.get("priority") == "N/A":
+                score = record.get("prospect_score", 5)
+                if score >= 8:
+                    record["priority"] = "HIGH"
+                elif score >= 6:
+                    record["priority"] = "MEDIUM"
+                else:
+                    record["priority"] = "LOW"
+
+            # Convert eu_us_jp_export to boolean if it's a string
+            eu_us_jp = record.get("eu_us_jp_export")
+            if isinstance(eu_us_jp, str):
+                record["eu_us_jp_export"] = eu_us_jp.lower() in ("yes", "true", "1", "y")
+            elif eu_us_jp == "N/A":
+                record["eu_us_jp_export"] = False
+            # If it's already a boolean, leave it as is
 
             valid_records.append(record)
 

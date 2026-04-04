@@ -10,6 +10,8 @@ Provides interface for Gemini Grounding Search API with:
 import logging
 import threading
 import time
+from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import google.generativeai as genai
@@ -26,6 +28,89 @@ logger = logging.getLogger(__name__)
 # Global Gemini client instance with thread safety
 _gemini_client: Optional[genai.GenerativeModel] = None
 _lock = threading.Lock()
+
+# Load prompt template once
+_PROMPT_TEMPLATE: Optional[str] = None
+
+# Track last saved response file path for Story 1.4 flow
+_last_saved_response_path: str = ""
+
+
+def _load_prompt_template() -> str:
+    """Load Gemini search prompt from prompts/gemini_search.md
+
+    Returns:
+        str: Prompt template with {country} and {query} placeholders
+    """
+    global _PROMPT_TEMPLATE
+
+    if _PROMPT_TEMPLATE is not None:
+        return _PROMPT_TEMPLATE
+
+    # Find prompt file relative to this module
+    prompt_path = Path(__file__).parent / "prompts" / "gemini_search.md"
+
+    try:
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            _PROMPT_TEMPLATE = f.read()
+            logger.info(f"Loaded prompt template from {prompt_path}")
+            return _PROMPT_TEMPLATE
+    except FileNotFoundError:
+        error_msg = f"Prompt file not found: {prompt_path}"
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
+    except Exception as e:
+        error_msg = f"Failed to load prompt: {e}"
+        logger.error(error_msg)
+        raise
+
+
+def get_last_saved_response_path() -> str:
+    """Get the path of the last saved Gemini response file
+
+    Returns:
+        str: File path, or empty string if nothing has been saved
+    """
+    return _last_saved_response_path
+
+
+def save_raw_response(country: str, query: str, response_text: str) -> str:
+    """Save raw Gemini response to file for debugging and re-parsing
+
+    Args:
+        country: Search country
+        query: Search keyword
+        response_text: Raw response from Gemini API
+
+    Returns:
+        str: File path to saved response
+    """
+    global _last_saved_response_path
+
+    try:
+        response_dir = Path("data/gemini_responses")
+        response_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        sanitized_query = query.replace(" ", "_")[:30]
+        filename = f"{timestamp}_{country}_{sanitized_query}.json"
+        filepath = response_dir / filename
+
+        # Save response
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(response_text)
+
+        # Update global path tracker for Story 1.4 flow
+        _last_saved_response_path = str(filepath)
+
+        logger.info(f"Saved raw Gemini response to {filepath}")
+        return str(filepath)
+
+    except Exception as e:
+        logger.error(f"Failed to save raw response: {e}")
+        # Don't raise - this is a non-critical operation
+        return ""
 
 
 def _redact_api_key(api_key: str) -> str:
@@ -108,21 +193,14 @@ def call_gemini_grounding_search(
         logger.error(error_msg)
         raise GeminiError(error_msg)
 
-    # Build prompt for company discovery
-    prompt = f"""Find companies in {country} that match the following criteria: {query}
-
-Return the results in JSON format with the following fields for each company:
-- name
-- country
-- city
-- main_products
-- estimated_revenue
-- prospect_score (1-10)
-- priority (HIGH/MEDIUM/LOW)
-- website
-- linkedin_url
-
-Please be thorough and return as many relevant companies as possible."""
+    # Load and build prompt from template
+    try:
+        prompt_template = _load_prompt_template()
+        prompt = prompt_template.format(country=country, query=query)
+    except Exception as e:
+        error_msg = f"Failed to prepare prompt: {e}"
+        logger.error(error_msg)
+        raise GeminiError(error_msg) from e
 
     # Retry logic with exponential backoff
     retry_count = 0
@@ -147,6 +225,12 @@ Please be thorough and return as many relevant companies as possible."""
             result_text = response.text
 
             logger.info(f"Gemini API call successful: {len(result_text)} characters returned")
+
+            # Save raw response to file for debugging and re-parsing
+            saved_path = save_raw_response(country, query, result_text)
+            if saved_path:
+                logger.info(f"Raw response saved to: {saved_path}")
+
             return result_text
 
         except TimeoutError as e:

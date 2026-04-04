@@ -12,7 +12,7 @@ createdDate: "2026-04-03"
 
 **Epic 目标:** 用户能够输入国家和关键词，系统自动搜索并将结果持久化到数据库
 
-**用户成果:** 从搜索表单输入 → Gemini API 调用 → 数据解析、规范化、去重 → 数据入库
+**用户成果:** 从搜索表单输入 → Gemini API 调用 → 保存原始响应到文件 → 从文件读取解析 → 数据规范化、去重 → 数据入库
 
 **覆盖需求:**
 - Functional: FR1, FR2, FR3, FR4, FR5, FR6, FR7
@@ -189,14 +189,27 @@ def initialize_gemini(api_key: str) -> bool:
 def call_gemini_grounding_search(country: str, query: str) -> str:
     """Call Gemini Grounding Search API.
     Returns raw response (could be JSON/CSV/Markdown).
+    Automatically saves raw response to file before returning.
+    """
+
+def save_raw_response(country: str, query: str, response_text: str) -> str:
+    """Save raw API response to file for debugging and re-parsing.
+    Returns file path: data/gemini_responses/{timestamp}_{country}_{query}.json
     """
 ```
 
-**And** the function includes:
+**And** the call_gemini_grounding_search() function includes:
 - Timeout handling (default 30s)
 - Retry logic (max 3 attempts with 2s exponential backoff on network error)
 - Error logging on API failure (but never logs API key)
 - User-friendly error messages
+- Automatic saving of raw response to file (via save_raw_response())
+
+**And** the save_raw_response() function:
+- Creates data/gemini_responses/ directory if not exists
+- Saves with filename: {timestamp}_{country}_{query}.json
+- Returns file path as string
+- Non-critical operation - errors are logged but don't raise exceptions
 
 **And** when GEMINI_API_KEY is missing:
 - Show clear error: "未找到 GEMINI_API_KEY，请检查 .env 文件"
@@ -206,6 +219,7 @@ def call_gemini_grounding_search(country: str, query: str) -> str:
 
 **And** the response from Gemini is returned as-is (raw text/JSON/markdown)
 - No pre-processing of response in this story
+- Raw response is already saved to file automatically
 - Response validation happens in Story 1.4
 
 **Coverage:**
@@ -244,18 +258,27 @@ So that I can discover potential customers automatically.
 2. The system calls Gemini Grounding Search API with the query
 3. The system waits for response (timeout 30s)
 
-**And** when the response is received:
-- The system detects the response format (JSON / Markdown table / CSV)
-- Log the detected format for debugging
+**And** the response is automatically saved to file:
+- File path: data/gemini_responses/{timestamp}_{country}_{query}.json
+- This happens automatically in gemini_client.call_gemini_grounding_search()
+- This allows developers to re-parse data without re-calling the API
+- File is saved regardless of format validity
+
+**And** the system reads the saved file and detects response format:
+- Read content from data/gemini_responses/{timestamp}_{country}_{query}.json
+- Detect format: JSON / Markdown table / CSV / UNKNOWN
+- Log the detected format and file path for debugging
 
 **And** when the response format is valid (can be parsed):
-- The data is passed to Story 1.5 (parsing & normalization)
+- The file path is passed to Story 1.5 (parsing & normalization)
+- Story 1.5 reads file and parses the data
 - Show success message: "搜索成功，正在处理结果..."
 
 **And** when the response format is invalid or unparseable:
 - Show user-friendly error message: "搜索失败：格式错误，请稍后重试"
-- Log the raw response for debugging
+- Log the raw response file path for debugging
 - Allow user to retry the search
+- File is preserved for manual inspection
 
 **And** the search form includes proper UX:
 - Loading spinner during API call
@@ -291,10 +314,16 @@ So that the database contains only clean, unique company records.
 
 **Acceptance Criteria:**
 
-**Given** the Gemini response is valid and format is detected  
-**When** the parser.py processes the response:
+**Given** the Gemini response has been saved to file: data/gemini_responses/{timestamp}_{country}_{query}.json  
+**And** the response format has been detected (JSON / Markdown / CSV)  
+**When** the parse_response_and_insert() function reads the file and processes it:
 
-**Then** for each company record in the response:
+**Then** the function first reads the raw response content from the saved file:
+- Open file: data/gemini_responses/{timestamp}_{country}_{query}.json
+- Parse content according to detected format (JSON / Markdown / CSV)
+- Extract company records from parsed content
+
+**And** for each company record in the parsed response:
 1. **Parse all 16 fields:**
    - Company name, country, city, year_established, employees, estimated_revenue
    - main_products, export_markets, eu_us_jp_export, raw_materials
@@ -381,8 +410,9 @@ So that the database contains only clean, unique company records.
 - ✅ Flask project structure with proper organization
 - ✅ SQLite database with companies & search_history tables
 - ✅ Gemini API integration with error handling & retry logic
+- ✅ Raw Gemini responses saved to local files (data/gemini_responses/)
 - ✅ Web search form with proper UX
-- ✅ Data parsing, normalization, and deduplication pipeline
+- ✅ Data parsing, normalization, and deduplication pipeline (reads from saved files)
 
 **Dependencies:** None (Epic 1 is the foundation)
 
