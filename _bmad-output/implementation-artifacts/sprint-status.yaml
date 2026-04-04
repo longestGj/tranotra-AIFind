@@ -31,7 +31,7 @@
 # - Stories can be worked in parallel if team capacity allows
 
 generated: 2026-04-04T00:00:00Z
-last_updated: 2026-04-04T12:00:00Z
+last_updated: 2026-04-04T13:30:00Z
 project: 08B2B_AIfind
 project_key: NOKEY
 tracking_system: file-system
@@ -51,8 +51,8 @@ development_status:
   epic-2: in-progress
   2-1-results-page-api: done
   2-2-card-view-display: review
-  2-3-table-view-sorting: backlog
-  2-4-view-switching: backlog
+  2-3-table-view-sorting: done
+  2-4-view-switching: ready-for-dev
   2-5-csv-export: backlog
   epic-2-retrospective: optional
 
@@ -78,11 +78,11 @@ summary:
   total_items: 24
   epics_in_progress: 1
   epics_done: 1
-  stories_backlog: 8
-  stories_ready_for_dev: 0
+  stories_backlog: 7
+  stories_ready_for_dev: 1
   stories_in_progress: 0
   stories_review: 1
-  stories_done: 7
+  stories_done: 8
   retrospectives_done: 0
 
 # Dependency Map
@@ -110,9 +110,9 @@ development_sequence:
     status: "in-progress"
     priority: P0-Critical
     depends_on: phase_1
-    current_story: "2-2-card-view-display"
+    current_story: "2-4-view-switching"
     last_updated: "2026-04-04"
-    note: "Story 2-1 complete; Story 2-2 specification ready for dev"
+    note: "Story 2-1 complete; Story 2-2 in review; Story 2-3 done; Story 2-4 ready-for-dev"
 
   phase_3:
     name: "Analytics & Optimization (Epic 3)"
