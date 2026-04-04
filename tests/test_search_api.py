@@ -90,9 +90,9 @@ class TestSearchAPI:
 
     def test_search_api_format_detection_json(self, client, mocker):
         """Test search API with JSON format detection"""
-        mock_response = '[{"name": "Company A"}]'
+        mock_response = '[{"name": "Company A", "country": "Vietnam", "linkedin_url": "https://linkedin.com/company/a/", "prospect_score": 8}]'
         mocker.patch(
-            "src.tranotra.routes.initialize_gemini",
+            "tranotra.routes.initialize_gemini",
             return_value=True
         )
         mocker.patch(
@@ -112,7 +112,7 @@ class TestSearchAPI:
         """Test search API with invalid format"""
         mock_response = "This is plain text without structure"
         mocker.patch(
-            "src.tranotra.routes.initialize_gemini",
+            "tranotra.routes.initialize_gemini",
             return_value=True
         )
         mocker.patch(
