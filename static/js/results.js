@@ -1237,3 +1237,322 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+/**
+ * Handle export CSV button click
+ */
+function handleExportClick() {
+    if (!currentState.companies || currentState.companies.length === 0) {
+        showToast('没有数据可导出', 3000);
+        return;
+    }
+
+    // Prevent duplicate dialogs (race condition fix)
+    if (currentState._exportDialogOpen) {
+        return;
+    }
+
+    // Show confirmation dialog
+    showExportDialog(currentState.companies);
+}
+
+/**
+ * Show export scope confirmation dialog
+ *
+ * FIXES:
+ * - Captures page/perPage at dialog time (prevents pagination race condition)
+ * - Uses safe DOM methods instead of HTML injection (XSS prevention)
+ * - Properly cleans up event listeners (memory leak prevention)
+ * - Prevents multiple dialogs with state flag (race condition prevention)
+ */
+function showExportDialog(companies) {
+    // Capture current pagination state to prevent changes during export
+    const capturedPage = currentState.page;
+    const capturedPerPage = currentState.perPage;
+
+    const currentPageStart = (capturedPage - 1) * capturedPerPage;
+    const currentPageEnd = Math.min(currentPageStart + capturedPerPage, companies.length);
+    const currentPageCount = currentPageEnd - currentPageStart;
+    const totalCount = companies.length;
+
+    // Remove any existing dialog
+    const existing = document.getElementById('export-overlay');
+    if (existing) existing.remove();
+
+    // Build dialog using safe DOM methods (prevents XSS)
+    const overlay = document.createElement('div');
+    overlay.className = 'export-dialog-overlay';
+    overlay.id = 'export-overlay';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'export-dialog';
+
+    const title = document.createElement('h3');
+    title.textContent = '导出数据';
+
+    const label = document.createElement('p');
+    label.textContent = '请选择导出范围：';
+
+    const form = document.createElement('form');
+    form.id = 'export-form';
+
+    // Current page option
+    const labelCurrent = document.createElement('label');
+    labelCurrent.className = 'export-option';
+    const radioCurrent = document.createElement('input');
+    radioCurrent.type = 'radio';
+    radioCurrent.name = 'scope';
+    radioCurrent.value = 'current';
+    radioCurrent.checked = true;
+    const spanCurrent = document.createElement('span');
+    spanCurrent.textContent = `导出当前页 (${currentPageCount}条)`;
+    labelCurrent.appendChild(radioCurrent);
+    labelCurrent.appendChild(spanCurrent);
+
+    // All records option
+    const labelAll = document.createElement('label');
+    labelAll.className = 'export-option';
+    const radioAll = document.createElement('input');
+    radioAll.type = 'radio';
+    radioAll.name = 'scope';
+    radioAll.value = 'all';
+    const spanAll = document.createElement('span');
+    spanAll.textContent = `导出所有 (${totalCount}条)`;
+    labelAll.appendChild(radioAll);
+    labelAll.appendChild(spanAll);
+
+    form.appendChild(labelCurrent);
+    form.appendChild(labelAll);
+
+    const confirmText = document.createElement('p');
+    confirmText.className = 'export-confirm-text';
+    confirmText.textContent = `确定要导出${totalCount}条记录到CSV吗?`;
+
+    const actions = document.createElement('div');
+    actions.className = 'dialog-actions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.id = 'export-cancel';
+    cancelBtn.textContent = '取消';
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'btn btn-primary';
+    confirmBtn.id = 'export-confirm';
+    confirmBtn.textContent = '导出';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(confirmBtn);
+
+    dialog.appendChild(title);
+    dialog.appendChild(label);
+    dialog.appendChild(form);
+    dialog.appendChild(confirmText);
+    dialog.appendChild(actions);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    // Mark dialog as open (prevents duplicate dialog race condition)
+    currentState._exportDialogOpen = true;
+
+    // Create cleanup function to prevent listener accumulation (memory leak fix)
+    const cleanupDialog = () => {
+        const overlayElement = document.getElementById('export-overlay');
+        if (overlayElement) overlayElement.remove();
+        document.removeEventListener('keydown', handleEscape);
+        currentState._exportDialogOpen = false;
+    };
+
+    // Cancel button handler
+    cancelBtn.addEventListener('click', cleanupDialog);
+
+    // Click outside dialog to close
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            cleanupDialog();
+        }
+    });
+
+    // Confirm button handler
+    confirmBtn.addEventListener('click', async () => {
+        const scope = form.querySelector('input[name="scope"]:checked').value;
+        cleanupDialog();
+        // Pass captured page/perPage to prevent changes during export (pagination race fix)
+        await performExport(companies, scope, capturedPage, capturedPerPage);
+    });
+
+    // Close on Escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            cleanupDialog();
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+/**
+ * Perform CSV export
+ *
+ * @param {Array} companies - Company data array
+ * @param {string} exportScope - 'current' or 'all'
+ * @param {number} pageAtDialogTime - Page number captured at dialog creation
+ * @param {number} perPageAtDialogTime - Items per page captured at dialog creation
+ */
+async function performExport(companies, exportScope, pageAtDialogTime, perPageAtDialogTime) {
+    const exportBtn = document.getElementById('export-csv-btn');
+    const originalText = exportBtn.textContent;
+
+    try {
+        // Set loading state
+        exportBtn.disabled = true;
+        exportBtn.classList.add('loading');
+        exportBtn.textContent = '正在导出...';
+
+        // Generate CSV using captured pagination values (prevents race condition)
+        const csvContent = generateCSV(companies, exportScope, pageAtDialogTime, perPageAtDialogTime);
+
+        // Generate filename
+        const filename = generateCSVFilename();
+
+        // Download
+        downloadCSV(csvContent, filename);
+
+        // Show success message
+        showToast('已导出，查看您的下载文件夹', 3000);
+
+    } catch (error) {
+        console.error('Export failed:', error);
+        showToast('导出失败，请重试', 3000);
+    } finally {
+        // Reset button state
+        exportBtn.disabled = false;
+        exportBtn.classList.remove('loading');
+        exportBtn.textContent = originalText;
+    }
+}
+
+/**
+ * Generate CSV string from company data
+ *
+ * @param {Array} companies - Company data array
+ * @param {string} exportScope - 'current' or 'all'
+ * @param {number} pageAtDialogTime - Page captured at dialog creation (prevents race condition)
+ * @param {number} perPageAtDialogTime - PerPage captured at dialog creation (prevents race condition)
+ */
+function generateCSV(companies, exportScope, pageAtDialogTime, perPageAtDialogTime) {
+    const headers = [
+        'id', 'name', 'country', 'city', 'year_established',
+        'employees', 'estimated_revenue', 'main_products',
+        'export_markets', 'eu_us_jp_export', 'raw_materials',
+        'recommended_product', 'recommendation_reason', 'website',
+        'contact_email', 'linkedin_url', 'linkedin_normalized',
+        'best_contact_title', 'prospect_score', 'priority',
+        'source_query', 'created_at', 'updated_at'
+    ];
+
+    // Use captured values to prevent race condition if page changes during export
+    const page = pageAtDialogTime || currentState.page;
+    const perPage = perPageAtDialogTime || currentState.perPage;
+
+    // Prepare data based on export scope
+    let dataToExport;
+    if (exportScope === 'all') {
+        dataToExport = companies;
+    } else {
+        // Export current page only using captured pagination state
+        const start = (page - 1) * perPage;
+        const end = Math.min(start + perPage, companies.length);
+        dataToExport = companies.slice(start, end);
+    }
+
+    // Validate dataset size (prevent browser hang with large datasets)
+    if (dataToExport.length > 5000) {
+        console.warn(`Large export detected: ${dataToExport.length} rows. CSV generation may take a few seconds.`);
+    }
+
+    // Build CSV rows
+    const rows = [headers.map(escapeCSVField).join(',')];
+
+    dataToExport.forEach(company => {
+        const row = headers.map(field => {
+            const value = company[field];
+            return escapeCSVField(value);
+        }).join(',');
+        rows.push(row);
+    });
+
+    // Add UTF-8 BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    const csv = BOM + rows.join('\r\n');
+
+    return csv;
+}
+
+/**
+ * Escape CSV field values
+ */
+function escapeCSVField(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    const str = String(value);
+
+    // Fields with commas, quotes, or newlines need quotes
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+
+    return str;
+}
+
+/**
+ * Generate CSV filename
+ *
+ * Includes milliseconds to prevent filename collisions on rapid exports
+ */
+function generateCSVFilename() {
+    const country = currentState.country || 'All';
+    const query = currentState.query || 'All';
+    const now = new Date();
+    // YYYYMMDD_HHMMSS_mmm (includes milliseconds for uniqueness)
+    const timestamp = now.getFullYear().toString() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0') + '_' +
+        String(now.getMilliseconds()).padStart(3, '0');
+
+    // Clean filename: remove special characters
+    const cleanCountry = country.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const cleanQuery = query.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    return `tranotra_leads_${cleanCountry}_${cleanQuery}_${timestamp}.csv`;
+}
+
+/**
+ * Trigger file download using Blob and download API
+ */
+function downloadCSV(csvContent, filename) {
+    // Create Blob with UTF-8 encoding
+    const blob = new Blob([csvContent], {
+        type: 'text/csv;charset=utf-8;'
+    });
+
+    // Create download link
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up
+    URL.revokeObjectURL(url);
+}
