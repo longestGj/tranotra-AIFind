@@ -69,12 +69,22 @@ def db_session(app):
 
     with app.app_context():
         session = get_db()
-        yield session
         try:
-            session.expunge_all()
-            session.close()
-        except Exception:
-            pass
+            yield session
+        finally:
+            # Ensure clean shutdown
+            try:
+                session.rollback()  # Rollback any uncommitted changes
+            except Exception:
+                pass
+            try:
+                session.expunge_all()  # Clear the session
+            except Exception:
+                pass
+            try:
+                session.close()  # Close the connection
+            except Exception:
+                pass
 
 
 @pytest.fixture
@@ -92,44 +102,47 @@ def sample_companies(db_session):
     import time
 
     companies = []
-    for i in range(5):
-        # Use timestamp to ensure uniqueness
-        unique_suffix = f"test_company_{i}_{int(time.time() * 1000)}"
-        company_data = {
-            "name": f"Test Company {i}",
-            "country": "Vietnam" if i < 3 else "Thailand",
-            "city": "Ho Chi Minh" if i < 3 else "Bangkok",
-            "year_established": 2010 + i,
-            "employees": f"{100 * (i + 1)}-{200 * (i + 1)}",
-            "estimated_revenue": f"${10 * (i + 1)}M+",
-            "main_products": f"Product {i}",
-            "export_markets": "USA, ASEAN",
-            "eu_us_jp_export": True if i % 2 == 0 else False,
-            "raw_materials": f"Material {i}",
-            "recommended_product": f"DOTP {i}",
-            "recommendation_reason": f"Perfect fit for {i}",
-            "website": f"company{unique_suffix}.com",
-            "contact_email": f"contact{unique_suffix}@company.com",
-            "linkedin_url": f"linkedin.com/company/{unique_suffix}",
-            "linkedin_normalized": f"linkedin.com/company/{unique_suffix}",
-            "best_contact_title": "Purchasing Manager",
-            "prospect_score": 8 - i if i < 3 else 6 - i,
-            "priority": "HIGH" if i < 2 else "MEDIUM" if i < 4 else "LOW",
-            "source_query": "PVC manufacturer" if i < 3 else "Textile supplier"
-        }
-        company_id = insert_company(company_data)
-        companies.append(company_id)
-
-    yield companies
-
-    # Cleanup - properly handle database resources
     try:
-        db_session.query(Company).filter(Company.id.in_(companies)).delete()
-        db_session.commit()
-    except Exception as e:
-        db_session.rollback()
+        for i in range(5):
+            # Use timestamp to ensure uniqueness
+            unique_suffix = f"test_company_{i}_{int(time.time() * 1000)}"
+            company_data = {
+                "name": f"Test Company {i}",
+                "country": "Vietnam" if i < 3 else "Thailand",
+                "city": "Ho Chi Minh" if i < 3 else "Bangkok",
+                "year_established": 2010 + i,
+                "employees": f"{100 * (i + 1)}-{200 * (i + 1)}",
+                "estimated_revenue": f"${10 * (i + 1)}M+",
+                "main_products": f"Product {i}",
+                "export_markets": "USA, ASEAN",
+                "eu_us_jp_export": True if i % 2 == 0 else False,
+                "raw_materials": f"Material {i}",
+                "recommended_product": f"DOTP {i}",
+                "recommendation_reason": f"Perfect fit for {i}",
+                "website": f"company{unique_suffix}.com",
+                "contact_email": f"contact{unique_suffix}@company.com",
+                "linkedin_url": f"linkedin.com/company/{unique_suffix}",
+                "linkedin_normalized": f"linkedin.com/company/{unique_suffix}",
+                "best_contact_title": "Purchasing Manager",
+                "prospect_score": 8 - i if i < 3 else 6 - i,
+                "priority": "HIGH" if i < 2 else "MEDIUM" if i < 4 else "LOW",
+                "source_query": "PVC manufacturer" if i < 3 else "Textile supplier"
+            }
+            company_id = insert_company(company_data)
+            companies.append(company_id)
+
+        yield companies
+
     finally:
-        db_session.expunge_all()
+        # Cleanup - properly handle database resources
+        try:
+            if companies:
+                db_session.query(Company).filter(Company.id.in_(companies)).delete()
+                db_session.commit()
+        except Exception:
+            db_session.rollback()
+        finally:
+            db_session.expunge_all()
 
 
 @pytest.fixture
@@ -146,48 +159,51 @@ def sample_companies_many(db_session):
     from tranotra.db import insert_company
 
     companies = []
-    for i in range(25):
-        # Use timestamp to ensure uniqueness
-        unique_suffix = f"large_company_test_{i}"
-        company_data = {
-            "name": f"Large Company {i}",
-            "country": "Vietnam" if i % 2 == 0 else "Thailand",
-            "city": "Ho Chi Minh" if i % 2 == 0 else "Bangkok",
-            "year_established": 2015 + (i % 10),
-            "employees": f"{100 * (i % 5 + 1)}-{200 * (i % 5 + 1)}",
-            "estimated_revenue": f"${10 * (i % 10 + 1)}M+",
-            "main_products": f"Product {i % 5}",
-            "export_markets": "USA, ASEAN",
-            "eu_us_jp_export": i % 2 == 0,
-            "raw_materials": f"Material {i % 3}",
-            "recommended_product": f"DOTP {i % 4}",
-            "recommendation_reason": f"Perfect fit {i}",
-            "website": f"company{unique_suffix}.com",
-            "contact_email": f"contact{unique_suffix}@company.com",
-            "linkedin_url": f"linkedin.com/company/{unique_suffix}",
-            "linkedin_normalized": f"linkedin.com/company/{unique_suffix}",
-            "best_contact_title": "Purchasing Manager",
-            "prospect_score": (9 - (i % 9)) if i < 30 else (5 - (i % 5)),
-            "priority": "HIGH" if i < 15 else "MEDIUM" if i < 35 else "LOW",
-            "source_query": "Cable manufacturer"
-        }
-        try:
-            company_id = insert_company(company_data)
-            companies.append(company_id)
-        except ValueError:
-            # Skip duplicates
-            pass
-
-    yield companies
-
-    # Cleanup - properly handle database resources
     try:
-        db_session.query(Company).filter(Company.id.in_(companies)).delete()
-        db_session.commit()
-    except Exception as e:
-        db_session.rollback()
+        for i in range(25):
+            # Use timestamp to ensure uniqueness
+            unique_suffix = f"large_company_test_{i}"
+            company_data = {
+                "name": f"Large Company {i}",
+                "country": "Vietnam" if i % 2 == 0 else "Thailand",
+                "city": "Ho Chi Minh" if i % 2 == 0 else "Bangkok",
+                "year_established": 2015 + (i % 10),
+                "employees": f"{100 * (i % 5 + 1)}-{200 * (i % 5 + 1)}",
+                "estimated_revenue": f"${10 * (i % 10 + 1)}M+",
+                "main_products": f"Product {i % 5}",
+                "export_markets": "USA, ASEAN",
+                "eu_us_jp_export": i % 2 == 0,
+                "raw_materials": f"Material {i % 3}",
+                "recommended_product": f"DOTP {i % 4}",
+                "recommendation_reason": f"Perfect fit {i}",
+                "website": f"company{unique_suffix}.com",
+                "contact_email": f"contact{unique_suffix}@company.com",
+                "linkedin_url": f"linkedin.com/company/{unique_suffix}",
+                "linkedin_normalized": f"linkedin.com/company/{unique_suffix}",
+                "best_contact_title": "Purchasing Manager",
+                "prospect_score": (9 - (i % 9)) if i < 30 else (5 - (i % 5)),
+                "priority": "HIGH" if i < 15 else "MEDIUM" if i < 35 else "LOW",
+                "source_query": "Cable manufacturer"
+            }
+            try:
+                company_id = insert_company(company_data)
+                companies.append(company_id)
+            except ValueError:
+                # Skip duplicates
+                pass
+
+        yield companies
+
     finally:
-        db_session.expunge_all()
+        # Cleanup - properly handle database resources
+        try:
+            if companies:
+                db_session.query(Company).filter(Company.id.in_(companies)).delete()
+                db_session.commit()
+        except Exception:
+            db_session.rollback()
+        finally:
+            db_session.expunge_all()
 
 
 @pytest.fixture

@@ -122,7 +122,16 @@
       "Bash(rm:*)",
       "Read(//tmp/**)",
       "Bash(pkill -f \"python run_app.py\")",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(pytest tests/integration/test_api_endpoints_real_integration.py::TestAPIEndpointsRealIntegration::test_pagination_boundary_page_zero -xvs)",
+      "Bash(pytest tests/integration/test_api_endpoints_real_integration.py -v --tb=short)",
+      "Bash(pytest tests/integration/test_api_endpoints_real_integration.py -v --tb=line)",
+      "Bash(pytest tests/integration/test_api_endpoints_real_integration.py -v)",
+      "Bash(pytest tests/integration/test_gemini_real_integration.py tests/integration/test_api_endpoints_real_integration.py tests/integration/test_csv_export_real_integration.py -v)",
+      "Bash(pytest tests/integration/test_csv_export_real_integration.py::TestCSVExportRealIntegration::test_csv_export_returns_csv_content_type -xvs)",
+      "Bash(pytest tests/integration/test_csv_export_real_integration.py -v)",
+      "Bash(pytest tests/integration/test_gemini_real_integration.py::TestGeminiRealAPIIntegration::test_gemini_api_response_parseable -xvs)",
+      "Bash(pytest tests/integration/test_api_endpoints_real_integration.py tests/integration/test_csv_export_real_integration.py -v --tb=no)"
     ]
   }
 }

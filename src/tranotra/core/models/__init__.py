@@ -1,8 +1,10 @@
 """SQLAlchemy database models and session management"""
 
+import os
 from threading import Lock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.pool import StaticPool
 from typing import Optional
 
 # Declarative base for all models
@@ -18,6 +20,7 @@ def init_db_engine(database_url: str):
     """Initialize database engine and session maker
 
     Thread-safe initialization to prevent race conditions in multi-worker deployments.
+    For SQLite in test mode, uses StaticPool to avoid connection pool exhaustion.
 
     Args:
         database_url: SQLAlchemy database URL
@@ -29,7 +32,22 @@ def init_db_engine(database_url: str):
         if SessionLocal is not None:
             return
 
-        engine = create_engine(database_url, echo=False)
+        # Use StaticPool for SQLite in testing to avoid pool exhaustion
+        is_test_mode = os.environ.get("FLASK_ENV") == "testing"
+        is_sqlite = "sqlite" in database_url.lower()
+
+        if is_test_mode and is_sqlite:
+            # StaticPool: one connection, reused for all threads
+            engine = create_engine(
+                database_url,
+                echo=False,
+                poolclass=StaticPool,
+                connect_args={"check_same_thread": False}
+            )
+        else:
+            # Production: normal QueuePool with configurable size
+            engine = create_engine(database_url, echo=False, pool_pre_ping=True)
+
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
         # Create all tables

@@ -92,7 +92,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_returns_csv_content_type(self, client):
         """验证：响应的 Content-Type 是 text/csv"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -104,7 +104,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_not_empty(self, client):
         """验证：导出的 CSV 不为空"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -115,7 +115,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_has_header_and_data(self, client):
         """验证：CSV 包含 header 行和数据行"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -127,7 +127,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_contains_real_company_names(self, client, setup_test_data):
         """验证：导出的 CSV 包含创建的真实公司数据"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -157,7 +157,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_company_fields_complete(self, client):
         """验证：导出的公司数据字段完整"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -177,7 +177,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_data_accuracy(self, client):
         """验证：导出的数据准确性（值匹配）"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -204,7 +204,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_encoding_utf8(self, client):
         """验证：CSV 使用 UTF-8 编码（支持国际字符）"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -217,7 +217,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_field_count(self, client):
         """验证：CSV 每行的列数一致"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -247,7 +247,7 @@ class TestCSVExportRealIntegration:
         db_session.query(Company).delete()
         db_session.commit()
 
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'scope': 'all'
         })
 
@@ -269,7 +269,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_filters_by_country(self, client):
         """验证：导出支持按国家筛选"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'country': 'Vietnam',
             'scope': 'all'
         })
@@ -287,7 +287,7 @@ class TestCSVExportRealIntegration:
 
     def test_csv_export_with_query_filter(self, client):
         """验证：导出支持查询过滤"""
-        response = client.post('/api/export/csv', json={
+        response = client.post('/api/search/export/csv', json={
             'query': 'PVC',
             'scope': 'all'
         })
