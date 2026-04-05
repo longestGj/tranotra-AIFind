@@ -28,6 +28,13 @@ status: "SPECIFICATION"
 
 **用途：** 调用 Gemini API 搜索公司，返回原始数据
 
+**⚡ 关键特性：**
+- 🔍 调用 Gemini API 执行搜索
+- 💾 **自动保存搜索结果到文件**（默认：`data/gemini_responses/`）
+- 📺 **同时输出完整结果到 stdout**（Agent 可立即读取）
+- 📄 支持 JSON、CSV、Markdown 多种格式
+- ⏱️ 文件名自动生成（包含时间戳、国家、关键词、结果数量）
+
 **命令：**
 ```bash
 tranotra search \
@@ -35,7 +42,7 @@ tranotra search \
   --query QUERY \
   [--limit LIMIT] \
   [--output-format FORMAT] \
-  [--output-file FILE]
+  [--output-dir DIR]
 ```
 
 **参数：**
@@ -46,7 +53,21 @@ tranotra search \
 | `--query` | string | ✓ | 搜索关键词 | "PVC manufacturer", "cable export" |
 | `--limit` | int | ✗ | 返回结果数量（默认 50） | 20, 100 |
 | `--output-format` | enum | ✗ | 输出格式（默认 json） | json, csv, markdown |
-| `--output-file` | string | ✗ | 保存到文件（不指定则输出到 stdout） | results.json |
+| `--output-dir` | string | ✗ | 保存文件的目录（默认：data/gemini_responses） | ./results, /tmp/data |
+
+**输出行为：** 
+- ✅ **总是保存到文件**：自动生成文件名（时间戳 + 国家 + 关键词），保存到 `--output-dir` 指定的目录
+- ✅ **同时输出到 stdout**：完整的 JSON/CSV 数据输出到终端，Agent 可立即读取
+- 📂 **默认保存位置**：`data/gemini_responses/` （相对于项目根目录）
+
+**文件命名规则：**
+```
+{YYYYMMDD}_{HHMMSS}_{count}_{COUNTRY}_{keyword}.json
+
+示例：
+20260405_103000_25_Vietnam_PVC_manufacturer.json
+20260405_103015_18_Thailand_textile_export.json
+```
 
 **输出格式（JSON）：**
 
@@ -87,7 +108,9 @@ tranotra search \
   "metadata": {
     "api_provider": "gemini",
     "execution_time_seconds": 3.5,
-    "cached": false
+    "cached": false,
+    "saved_file": "data/gemini_responses/20260405_103000_25_Vietnam_PVC_manufacturer.json",
+    "saved_format": "json"
   }
 }
 ```
@@ -114,14 +137,17 @@ tranotra search \
 
 ```bash
 # 搜索越南 PVC 制造商
+# 结果自动保存到 data/gemini_responses/，同时输出到 stdout
 tranotra search --country Vietnam --query "PVC manufacturer" --limit 50
 
-# 搜索并保存为 JSON
+# 搜索并保存到自定义目录
 tranotra search \
   --country Thailand \
   --query "textile export" \
-  --output-file results.json \
+  --output-dir ./my_results \
   --output-format json
+# 文件保存：./my_results/20260405_103015_18_Thailand_textile_export.json
+# 内容同时输出到 stdout
 
 # Agent 调用示例（Python）
 result = subprocess.run([
@@ -129,11 +155,17 @@ result = subprocess.run([
     '--country', 'Vietnam',
     '--query', 'PVC manufacturer',
     '--output-format', 'json'
-], capture_output=True, text=True, json=True)
+], capture_output=True, text=True)
 
 if result.returncode == 0:
     data = json.loads(result.stdout)
+    saved_file = data['metadata']['saved_file']
     print(f"Found {data['results']['total']} companies")
+    print(f"Saved to: {saved_file}")  # 文件已自动保存
+    
+    # 如果需要查看保存的文件
+    with open(saved_file, 'r') as f:
+        saved_data = json.load(f)
 ```
 
 ---
@@ -431,7 +463,8 @@ batch:
     
   options:
     parallel_searches: false  # 并发搜索（未来支持）
-    save_intermediate: true   # 保存中间结果
+    save_intermediate: true   # 保存搜索结果到文件（总是开启，保存到 data/gemini_responses）
+    search_results_dir: "data/gemini_responses"  # 搜索结果保存目录
 ```
 
 **输出格式（JSON）：**
@@ -459,7 +492,8 @@ batch:
         "found": 25,
         "imported": 23,
         "skipped": 2,
-        "status": "success"
+        "status": "success",
+        "saved_file": "data/gemini_responses/20260405_103000_25_Vietnam_PVC_manufacturer.json"
       },
       {
         "country": "Vietnam",
@@ -467,14 +501,16 @@ batch:
         "found": 18,
         "imported": 18,
         "skipped": 0,
-        "status": "success"
+        "status": "success",
+        "saved_file": "data/gemini_responses/20260405_103012_18_Vietnam_plastic_film_production.json"
       }
     ]
   },
   "metadata": {
     "total_execution_time_seconds": 45,
     "api_calls": 5,
-    "database_writes": 115
+    "database_writes": 115,
+    "search_results_dir": "data/gemini_responses"
   }
 }
 ```
