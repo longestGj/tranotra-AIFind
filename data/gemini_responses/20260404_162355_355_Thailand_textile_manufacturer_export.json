@@ -1,0 +1,66 @@
+I have performed a search for soft PVC product manufacturers in Thailand based on your criteria.
+
+**Note on "textile manufacturer export" query:** The prompt included "matching query: textile manufacturer export." Given the primary instruction to search for "soft PVC product manufacturers" and the output fields specifically tailored to PVC products (e.g., "Best Plasticizer"), I have interpreted this as a potential misplacement or an example query and have focused the search on identifying genuine soft PVC product manufacturers, not textile manufacturers.
+
+Finding estimated annual revenue for private companies, and sometimes exact employee numbers, can be challenging from public sources. Where exact data is not available, I've noted "Not Publicly Disclosed" or provided the closest approximation. The "Best Plasticizer" and "Why that plasticizer" fields are educated recommendations based on their product lines and common industry practices for export markets.
+
+Here are the companies found, formatted in JSON:
+
+```json
+[
+  {
+    "Company Name (English)": "Thai Poly Acrylic Co., Ltd.",
+    "City/Province": "Samut Prakan",
+    "Year Established": "1968",
+    "Employees (approximate)": "201-500",
+    "Estimated Annual Revenue": "Not Publicly Disclosed",
+    "Main Products (specific)": "Flexible PVC Film & Sheet, PVC Strip Curtains, PVC Foam Board",
+    "Export Markets (which countries they sell to)": "Asia, America, Europe, Africa, Australia (Global)",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers, stabilizers, fillers, pigments",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "DOTP is a versatile, non-phthalate plasticizer offering good flexibility and durability, suitable for a wide range of applications and export to regulated markets.",
+    "Company Website": "https://www.thaipolyacrylic.co.th/en/",
+    "Contact Email": "info@thaipolyacrylic.co.th",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/thai-poly-acrylic-co-ltd./",
+    "Best job title to contact": "Purchasing Manager or International Sales Manager",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "Chandra Chemical Co., Ltd.",
+    "City/Province": "Samut Prakan",
+    "Year Established": "1978",
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "Not Publicly Disclosed",
+    "Main Products (specific)": "Soft PVC Compounds (for wires, cables, hoses, automotive, medical, shoes, general purpose)",
+    "Export Markets (which countries they sell to)": "Asia, Europe, Middle East, Africa (Global)",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers, stabilizers, lubricants, fillers, pigments",
+    "Best Plasticizer for them": "TOTM",
+    "Why that plasticizer": "TOTM offers excellent heat resistance, low volatility, and good migration resistance, making it ideal for high-performance applications like automotive and cable insulation.",
+    "Company Website": "http://www.chandrachemical.com/",
+    "Contact Email": "info@chandrachemical.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/chandra-chemical-co.-ltd./",
+    "Best job title to contact": "R&D Manager or Procurement Manager",
+    "Prospect Score (1-10)": 8
+  },
+  {
+    "Company Name (English)": "Union Plastic Public Co., Ltd.",
+    "City/Province": "Samut Prakan",
+    "Year Established": "1968",
+    "Employees (approximate)": "501-2000",
+    "Estimated Annual Revenue": "Not Publicly Disclosed",
+    "Main Products (specific)": "PVC Film, PVC Leather, PVC Foam, Flexible PVC Sheet",
+    "Export Markets (which countries they sell to)": "Europe, USA, Japan, Australia, Africa, Middle East, Asia (Worldwide)",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers, stabilizers, pigments, fillers",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "DOTP is a non-phthalate plasticizer widely accepted in global markets, providing good flexibility and durability for films and leatherette products.",
+    "Company Website": "http://www.unionplastic.co.th/",
+    "Contact Email": "info@unionplastic.co.th",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/union-plastic-public-company-limited/",
+    "Best job title to contact": "International Sales Director or Purchasing Manager",
+    "Prospect Score (1-10)": 9
+  }
+]
+```

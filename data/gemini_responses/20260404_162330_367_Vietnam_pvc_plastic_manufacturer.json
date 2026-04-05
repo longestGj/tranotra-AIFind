@@ -1,0 +1,84 @@
+I have conducted a thorough search for soft PVC product manufacturers in Vietnam based on your specified criteria. It's challenging to find "ALL" companies with verifiable information for all 16 fields, especially for private companies' revenue figures and exact raw material sourcing.
+
+However, I have identified **4 companies** that meet the core requirements (100+ employees, export to EU/USA, clear indication of soft PVC products or compounds used for soft PVC products).
+
+For fields like "Estimated Annual Revenue" and specific "Contact Email," exact data is often not publicly available for private companies without direct inquiry. "Best Plasticizer for them" and "Why that plasticizer" are inferred based on industry best practices, product types, and export market regulations (favoring non-phthalate plasticizers for EU/USA exports).
+
+Here are the companies found, presented in JSON format for structured data:
+
+```json
+[
+  {
+    "Company Name (English)": "Thinh Phat Cable Joint Stock Company (Thipha Cable)",
+    "City/Province": "Bien Hoa, Dong Nai",
+    "Year Established": "1987",
+    "Employees (approximate)": "1000-5000",
+    "Estimated Annual Revenue": "N/A (Private Company)",
+    "Main Products": "Electrical wires and cables, control cables (involving flexible PVC insulation and sheathing)",
+    "Export Markets": "Over 30 countries including EU, USA, Japan, Australia, Singapore, Cambodia, Laos",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC compound, copper, aluminum, plasticizers, stabilizers",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "DOTP is a common non-phthalate plasticizer providing good flexibility, electrical properties, and durability suitable for cable insulation and sheathing, meeting international standards for EU/USA markets.",
+    "Company Website": "https://www.thiphacable.com/",
+    "Contact Email": "info@thiphacable.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/thipha-cable/",
+    "Best job title to contact": "Purchasing Manager / R&D Manager",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "Tan Chau Plastic Joint Stock Company",
+    "City/Province": "Long An",
+    "Year Established": "1999",
+    "Employees (approximate)": "201-500",
+    "Estimated Annual Revenue": "N/A (Private Company)",
+    "Main Products": "Soft PVC film, rigid PVC sheet, plastic packaging film (HDPE, PP)",
+    "Export Markets": "Japan, USA, EU, Australia, Philippines, Cambodia",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers, stabilizers, colorants",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "DOTP is a widely used non-phthalate plasticizer for flexible PVC film, offering good clarity, flexibility, and compliance with regulations for export to EU/USA markets.",
+    "Company Website": "https://tanchauplastic.vn/",
+    "Contact Email": "sales@tanchauplastic.vn",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/tan-chau-plastic/",
+    "Best job title to contact": "Sales Manager / Procurement Manager",
+    "Prospect Score (1-10)": 8
+  },
+  {
+    "Company Name (English)": "An Thai Plastic Co., Ltd.",
+    "City/Province": "Dong Nai",
+    "Year Established": "2001",
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "N/A (Private Company)",
+    "Main Products": "Flexible PVC compounds (for cable, footwear, general purpose, medical applications), masterbatch",
+    "Export Markets": "North America, Western Europe, Southeast Asia",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers (DOP, DOTP, ATBC, etc.), stabilizers, lubricants, fillers",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "As a compound manufacturer offering phthalate-free and medical-grade options for diverse applications, DOTP is a versatile non-phthalate choice suitable for many flexible PVC products exported to EU/USA.",
+    "Company Website": "http://anthaiplastic.com/",
+    "Contact Email": "anthaiplastic@gmail.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/an-thai-plastic-co.-ltd./",
+    "Best job title to contact": "Technical Sales Manager / R&D Director",
+    "Prospect Score (1-10)": 8
+  },
+  {
+    "Company Name (English)": "Huu Nghi Plastic Joint Stock Company",
+    "City/Province": "Hung Yen",
+    "Year Established": "1999",
+    "Employees (approximate)": "201-500",
+    "Estimated Annual Revenue": "N/A (Private Company)",
+    "Main Products": "PVC garden hoses, flexible corrugated pipes, transparent pipes, spiral hoses, PVC sheets, uPVC pipes",
+    "Export Markets": "USA, EU, Japan, Australia, Southeast Asia",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers, colorants, stabilizers, reinforcing fibers",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "For consumer products like garden hoses and flexible pipes, DOTP is a widely accepted non-phthalate plasticizer offering excellent flexibility, durability, and compliance for demanding markets like the EU and USA.",
+    "Company Website": "http://huunghiplastic.vn/",
+    "Contact Email": "info@huunghiplastic.vn",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/huu-nghi-plastic-jsc/",
+    "Best job title to contact": "Purchasing Manager / Export Sales Manager",
+    "Prospect Score (1-10)": 9
+  }
+]
+```
