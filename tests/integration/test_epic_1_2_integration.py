@@ -13,7 +13,7 @@ from tranotra.analytics.metrics import calculate_total_companies
 class TestGeminiAPIIntegration:
     """P0: Gemini API integration tests"""
 
-    @patch('tranotra.infrastructure.gemini_client.GeminiClient.call_grounding_search')
+    @patch('tranotra.gemini_client.GeminiClient.call_grounding_search')
     def test_p0_1_gemini_api_successful_call(self, mock_gemini):
         """P0-1: Successful Gemini API call and response parsing"""
         # Arrange
@@ -32,7 +32,7 @@ class TestGeminiAPIIntegration:
         assert results[0]['name'] == "Vietnam PVC Co"
         assert results[1]['country'] == "Thailand"
 
-    @patch('tranotra.infrastructure.gemini_client.GeminiClient.call_grounding_search')
+    @patch('tranotra.gemini_client.GeminiClient.call_grounding_search')
     def test_p0_2_gemini_api_timeout_and_retry(self, mock_gemini):
         """P0-2: Gemini API timeout triggers 3 retries with exponential backoff"""
         # Arrange - Simulate: fail, fail, success
@@ -53,7 +53,7 @@ class TestGeminiAPIIntegration:
         assert mock_gemini.call_count == 3
         assert "Vietnam PVC" in result
 
-    @patch('tranotra.infrastructure.gemini_client.GeminiClient.call_grounding_search')
+    @patch('tranotra.gemini_client.GeminiClient.call_grounding_search')
     def test_p0_2_gemini_timeout_all_retries_fail(self, mock_gemini):
         """P0-2 Edge case: All 3 retries fail"""
         # Arrange
@@ -92,11 +92,19 @@ class TestDataParsingAndStorage:
         }'''
 
         # Act
-        from tranotra.core.parser import parse_gemini_response
-        from tranotra.core.services import company_service
+        from tranotra.parser import parse_gemini_response
+        from tranotra.db import insert_company
 
         parsed = parse_gemini_response(raw_response)
-        stored = company_service.store_companies(parsed, search_query="PVC", country="Vietnam")
+        if isinstance(parsed, dict) and 'companies' in parsed:
+            companies_list = parsed['companies']
+        else:
+            companies_list = parsed
+
+        stored = []
+        for company_data in companies_list:
+            company_id = insert_company(company_data)
+            stored.append(company_id)
 
         # Assert
         assert len(stored) == 1
@@ -215,8 +223,8 @@ class TestAPIKeyManagement:
     @patch.dict('os.environ', {'GEMINI_API_KEY': ''})
     def test_p1_2_missing_api_key_error(self):
         """P1-2: Missing API key raises clear error, never logs key"""
-        from tranotra.infrastructure.config import Config
-        from tranotra.infrastructure.gemini_client import GeminiInitError
+        from tranotra.config import Config
+        from tranotra.core.exceptions import GeminiInitError
 
         with pytest.raises(GeminiInitError) as exc_info:
             config = Config()
@@ -229,7 +237,7 @@ class TestAPIKeyManagement:
 
     def test_api_key_not_logged_in_plain_text(self, caplog):
         """P1-2: API key never appears in plain text in logs"""
-        from tranotra.infrastructure.config import Config
+        from tranotra.config import Config
         import logging
 
         caplog.set_level(logging.DEBUG)
@@ -287,7 +295,7 @@ class TestNetworkAndTimeout:
         mock_get.side_effect = Timeout("Request timed out")
 
         # This would be tested in E2E, but API level verification:
-        from tranotra.infrastructure.gemini_client import GeminiClient
+        from tranotra.gemini_client import GeminiClient
         client = GeminiClient()
 
         with pytest.raises(Exception):
