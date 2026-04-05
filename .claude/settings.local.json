@@ -120,7 +120,9 @@
       "Bash(PYTHONPATH=src python tests/integration/test_markdown_parser.py)",
       "Bash(xargs head:*)",
       "Bash(rm:*)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(pkill -f \"python run_app.py\")",
+      "Bash(netstat -ano)"
     ]
   }
 }

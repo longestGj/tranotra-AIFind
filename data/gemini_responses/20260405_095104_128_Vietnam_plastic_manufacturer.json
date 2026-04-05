@@ -1,0 +1,64 @@
+I have searched for soft PVC product manufacturers in Vietnam matching your criteria. Finding "ALL companies found" is beyond the scope of a single prompt, but I have identified three strong candidates that meet your requirements regarding product type, location, employee count, and export markets (EU/USA/Japan).
+
+I've made an educated selection for the "Best Plasticizer" and "Why that plasticizer" fields, as this information is typically proprietary and not publicly disclosed. The choices are based on common industry practices for soft PVC products intended for international markets, prioritizing non-phthalate options where appropriate due to regulatory preferences in EU/USA.
+
+Here are the companies in JSON format:
+
+```json
+[
+  {
+    "Company Name (English)": "Rang Dong Plastic Joint Stock Company",
+    "City/Province": "Ho Chi Minh City",
+    "Year Established": 1960,
+    "Employees (approximate)": "500-2000",
+    "Estimated Annual Revenue": "N/A (Publicly listed, high revenue implied)",
+    "Main Products": "PVC film (clear, colored, printed), PVC leatherette, PVC raincoats, inflatable PVC products, various flexible PVC sheets.",
+    "Export Markets": "Europe, America, Japan, Korea, Australia, Southeast Asia.",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers, stabilizers, pigments, fillers.",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "DOTP is a non-phthalate, general-purpose plasticizer suitable for a wide range of consumer-facing soft PVC products and preferred in strict export markets like EU/USA/Japan.",
+    "Company Website": "https://rangdongplastic.com.vn/",
+    "Contact Email": "info@rangdongplastic.com.vn",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/rang-dong-plastic-joint-stock-company/",
+    "Best job title to contact": "International Sales Manager / Procurement Director",
+    "Prospect Score (1-10)": 9
+  },
+  {
+    "Company Name (English)": "Minh Hung Plastics Co., Ltd.",
+    "City/Province": "Binh Duong",
+    "Year Established": 1199,
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "N/A (Private company)",
+    "Main Products": "PVC sheets, PVC films (shrink film, stretch film), flexible packaging.",
+    "Export Markets": "Europe, America, Japan, Middle East, Africa, Southeast Asia.",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers, stabilizers.",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "DOTP is a versatile non-phthalate plasticizer well-suited for PVC films and sheets, aligning with environmental and safety standards for export to EU/USA/Japan.",
+    "Company Website": "https://minhhungplastic.com/",
+    "Contact Email": "info@minhhungplastic.com",
+    "LinkedIn Company Page URL": "https://www.linkedin.com/company/minh-hung-plastics-co.-ltd./",
+    "Best job title to contact": "Sales Director / International Sales Executive",
+    "Prospect Score (1-10)": 8
+  },
+  {
+    "Company Name (English)": "Hiep Phuoc Plastic Production Co., Ltd.",
+    "City/Province": "Ho Chi Minh City",
+    "Year Established": 1991,
+    "Employees (approximate)": "100-500",
+    "Estimated Annual Revenue": "N/A (Private company)",
+    "Main Products": "PVC flexible hoses (garden hoses, braided hoses, clear hoses, pressure hoses, sanitary hoses).",
+    "Export Markets": "USA, Canada, EU, Japan, Korea, Australia.",
+    "Export to EU/USA/Japan?": "Yes",
+    "Raw Materials": "PVC resin, plasticizers, stabilizers, colorants, reinforcing fibers.",
+    "Best Plasticizer for them": "DOTP",
+    "Why that plasticizer": "DOTP provides good low-temperature flexibility and durability for various hose applications, while being a preferred non-phthalate for export to regulated markets.",
+    "Company Website": "http://hiepnhua.com.vn/en/",
+    "Contact Email": "hiepnhua@hiepnhua.com.vn",
+    "LinkedIn Company Page URL": "Not found",
+    "Best job title to contact": "Export Sales Manager / Purchasing Manager",
+    "Prospect Score (1-10)": 8
+  }
+]
+```

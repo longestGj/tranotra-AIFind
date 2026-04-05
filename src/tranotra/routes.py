@@ -454,3 +454,69 @@ def get_search_results() -> Tuple[Response, int]:
             "success": False,
             "message": "搜索失败，请稍后重试"
         }), 500
+
+
+@search_bp.route("/export/csv", methods=["POST"])
+def export_csv() -> Tuple[Response, int]:
+    """Export search results as CSV file
+
+    Request Body:
+    {
+        "country": "optional",
+        "query": "optional",
+        "scope": "all" (required)
+    }
+
+    Returns:
+        CSV file with all companies
+    """
+    import csv
+    from io import StringIO
+
+    try:
+        data = request.get_json() or {}
+        country = data.get('country', '').strip() or None
+        query = data.get('query', '').strip() or None
+        scope = data.get('scope', 'all')
+
+        if scope != 'all':
+            return jsonify({
+                "success": False,
+                "message": "仅支持 scope=all"
+            }), 400
+
+        # Get all companies (no pagination for export)
+        result = get_companies_paginated(country=country, query=query, page=1, per_page=10000)
+
+        companies = result.get('companies', [])
+
+        # Create CSV in memory
+        output = StringIO()
+        csv_writer = csv.DictWriter(output, fieldnames=[
+            'id', 'name', 'country', 'city', 'year_established',
+            'employees', 'estimated_revenue', 'main_products',
+            'export_markets', 'eu_us_jp_export', 'raw_materials',
+            'recommended_product', 'recommendation_reason', 'website',
+            'contact_email', 'linkedin_url', 'linkedin_normalized',
+            'best_contact_title', 'prospect_score', 'priority',
+            'source_query', 'created_at', 'updated_at'
+        ])
+
+        csv_writer.writeheader()
+        for company in companies:
+            csv_writer.writerow(company)
+
+        # Return CSV response
+        csv_data = output.getvalue()
+        response = Response(csv_data, mimetype='text/csv')
+        response.headers['Content-Disposition'] = 'attachment; filename=companies_export.csv'
+
+        logger.info(f"Exported {len(companies)} companies to CSV")
+        return response, 200
+
+    except Exception as e:
+        logger.error(f"Error exporting CSV: {e}")
+        return jsonify({
+            "success": False,
+            "message": "导出失败，请稍后重试"
+        }), 500
