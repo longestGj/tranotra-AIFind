@@ -119,7 +119,8 @@
       "Bash(mkdir:*)",
       "Bash(PYTHONPATH=src python tests/integration/test_markdown_parser.py)",
       "Bash(xargs head:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Read(//tmp/**)"
     ]
   }
 }
