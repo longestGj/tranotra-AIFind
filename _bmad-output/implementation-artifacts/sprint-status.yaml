@@ -125,7 +125,36 @@ development_sequence:
     depends_on: [phase_1, phase_2]
     current_story: "3-1-dashboard-metrics"
     last_updated: "2026-04-05"
-    note: "Story 3-1 spec created; ready for dev agent"
+    note: "Story 3-1 merged to master; working on E2E/integration tests for Epic 1-2"
+
+# Quality Assurance Phase
+qa_phase:
+  status: "in-progress"
+  current_focus: "Test Automation for Epic 1 & 2"
+  test_design_document: "_bmad-output/implementation-artifacts/test-design-epic-1-2.md"
+  test_design_completed: "2026-04-05T14:30:00Z"
+  test_automation_summary: "_bmad-output/implementation-artifacts/test-automation-summary.md"
+  test_automation_completed: "2026-04-05T15:45:00Z"
+  test_coverage_summary:
+    total_scenarios: 24
+    p0_scenarios: 8
+    p1_scenarios: 8
+    p2_scenarios: 5
+    p3_scenarios: 3
+  risk_assessment_completed: true
+  high_risks_identified: 4
+  test_files_generated:
+    - "tests/integration/test_epic_1_2_integration.py (13 tests)"
+    - "tests/e2e/test_epic_1_2_e2e.py (11 tests)"
+    - "tests/integration/conftest.py (enhanced with client fixture)"
+  test_fixtures_added:
+    - "client - Flask test client for API testing"
+    - "sample_large_dataset - 550+ companies for large dataset testing"
+    - "live_server - Flask test server for E2E"
+    - "selenium_driver - Chrome WebDriver for browser automation"
+  total_test_count: 39
+  estimated_execution_time: "~75 seconds"
+  next_phase: "Run test suite and generate coverage report"
 
   phase_4:
     name: "Quality & Performance (Epic 4)"

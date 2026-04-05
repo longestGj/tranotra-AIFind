@@ -43,6 +43,19 @@ def app():
 
 
 @pytest.fixture
+def client(app):
+    """Create Flask test client for API testing
+
+    Args:
+        app: Flask application fixture
+
+    Returns:
+        FlaskClient: Test client for making HTTP requests
+    """
+    return app.test_client()
+
+
+@pytest.fixture
 def db_session(app):
     """Create database session for integration testing
 
